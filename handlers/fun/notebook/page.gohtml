@@ -2,14 +2,15 @@
   <div style="display:flex; flex-direction: column; gap: 1em">
     {{template "notebookheader"}}
 
+
+    <div style="display:flex; justify-content:flex-start">
+      <button class="nes-btn is-success" hx-post="/fun/notes" hx-swap="afterbegin" hx-target="#notes">new note</button>
+    </div>
+
     <div id="notes" style="display:flex; flex-direction:column; gap:1em">
       {{range .Notes}}
         {{template "note" .}}
       {{end}}
-    </div>
-
-    <div style="display:flex; justify-content:flex-start">
-      <button class="nes-btn is-success" hx-post="/fun/notes" hx-swap="beforeend" hx-target="#notes">new note</button>
     </div>
   </div>
 {{end}}

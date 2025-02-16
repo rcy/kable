@@ -1829,7 +1829,7 @@ func (q *Queries) UserGradient(ctx context.Context, userID int64) (Gradient, err
 }
 
 const userNotes = `-- name: UserNotes :many
-select id, created_at, owner_id, body, published from notes where owner_id = ?
+select id, created_at, owner_id, body, published from notes where owner_id = ? order by created_at desc
 `
 
 func (q *Queries) UserNotes(ctx context.Context, ownerID int64) ([]Note, error) {
