@@ -1194,6 +1194,23 @@ func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, e
 	return items, nil
 }
 
+const messageByID = `-- name: MessageByID :one
+select id, created_at, sender_id, room_id, body from messages where id = ?
+`
+
+func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
+	row := q.db.QueryRowContext(ctx, messageByID, id)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SenderID,
+		&i.RoomID,
+		&i.Body,
+	)
+	return i, err
+}
+
 const parentByID = `-- name: ParentByID :one
 select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ? and is_parent = true
 `

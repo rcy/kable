@@ -62,8 +62,11 @@
     </a>
     <div class="nes-balloon from-left" style="overflow-wrap: break-word; max-width: 70%">
       <p>{{html .Body}}</p>
-      <div style="font-size: .8em; float:right; color: gray">
+      <div style="display:flex; gap:1em; font-size: .8em; float:right; color: gray">
         {{ago .CreatedAt}}
+        <div>
+          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.ID}}">save</a>
+        </div>
       </div>
     </div>
     <div style="flex:1"></div>
@@ -75,8 +78,11 @@
     <div style="flex:1"></div>
     <div class="nes-balloon from-right" style="overflow-wrap: break-word; max-width: 70%">
       <p>{{html .Body}}</p>
-      <div style="font-size: .8em; float:right; color: gray">
+      <div style="display:flex; gap:1em; font-size: .8em; float:right; color: gray">
         {{ago .CreatedAt}}
+        <div>
+          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.ID}}">save</a>
+        </div>
       </div>
     </div>
     <img style="margin-bottom: 8px" src="{{.SenderAvatarURL}}" width="80" height="80">

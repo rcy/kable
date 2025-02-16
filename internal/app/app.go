@@ -82,6 +82,7 @@ func (rs Resource) Routes() chi.Router {
 	r.Post("/fun/notes", notebook.Post)
 	r.Put("/fun/notes/{noteID}", notebook.Put)
 	r.Delete("/fun/notes/{noteID}", notebook.Delete)
+	r.Post("/fun/notes/from-chat/{messageID}", notebook.PostFromChat)
 
 	r.Mount("/bots", bots.Resource{Model: rs.Model, AI: ai.New().Client}.Routes())
 

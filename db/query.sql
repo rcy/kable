@@ -27,6 +27,9 @@ select * from (
   ) t
 order by created_at asc;
 
+-- name: MessageByID :one
+select * from messages where id = ?;
+
 -- name: AdminRecentMessages :many
 select
         m.*,
