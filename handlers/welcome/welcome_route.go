@@ -187,8 +187,8 @@ func kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 	for _, parent := range parents {
 		err = email.Send(
 			fmt.Sprintf("Code for %s is %s", username, code),
-			fmt.Sprintf(fmt.Sprintf("Your child, %s, is trying to login to Kable.  The verification code is %s.",
-				username, code)),
+			fmt.Sprintf("Your child, %s, is trying to login to Kable.  The verification code is %s.",
+				username, code),
 			parent.Email.String)
 		if err != nil {
 			render.Error(w, fmt.Sprintf("Error emailing code: %s", err), http.StatusInternalServerError)
