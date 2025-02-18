@@ -114,7 +114,7 @@ func (rs Resource) postCreate(w http.ResponseWriter, r *http.Request) {
 	// 	fmt.Printf("%v\n", m)
 	// }
 
-	model := "gpt-3.5-turbo"
+	model := openai.GPT4oMini
 
 	asst, err := rs.AI.CreateAssistant(ctx, openai.AssistantRequest{
 		Model:        model,
