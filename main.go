@@ -18,6 +18,8 @@ import (
 	"github.com/alexandrevicenzi/go-sse"
 )
 
+//go:generate go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
+
 func main() {
 	err := db.DB.Ping()
 	if err != nil {
