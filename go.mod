@@ -1,6 +1,6 @@
 module oj
 
-go 1.24.0
+go 1.24.2
 
 require (
 	github.com/BurntSushi/migration v0.0.0-20140125045755-c45b897f1335
