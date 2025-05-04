@@ -1,0 +1,11 @@
+load database
+     from ./oj-fixed.sqlite
+     into postgres://appuser:appuser@localhost:2017/kable_development
+
+cast
+        type string to text
+
+with include drop, create tables, create indexes, reset sequences, foreign keys
+
+set work_mem to '128MB', maintenance_work_mem to '512 MB';
+

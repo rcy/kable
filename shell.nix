@@ -5,9 +5,9 @@ in
 with nixpkgs; mkShell {
   buildInputs = [
     air
-    unstable.go_1_21
-    unstable.golint
-    unstable.gopls
+    go
+    golint
+    gopls
     sqlite
     flyctl
     golangci-lint
@@ -15,4 +15,7 @@ with nixpkgs; mkShell {
     google-cloud-sdk
     nodejs
   ];
+
+  DOCKER_CLI_HINTS="false";
+  PGSERVICEFILE="pg-service.conf";
 }
