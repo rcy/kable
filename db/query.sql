@@ -162,11 +162,11 @@ insert into room_users(room_id, user_id) values(@room_id, @user_id) returning *;
 select u.*,
        case
            when f1.a_id = @a_id then f1.b_role
-           else ""
+           else ''
        end as role_out,
        case
            when f2.b_id = @a_id then f2.b_role
-           else ""
+           else ''
        end as role_in
 from users u
 left join friends f1 on f1.b_id = u.id and f1.a_id = @a_id
@@ -178,11 +178,11 @@ where
 select u.*,
        case
            when f1.a_id = @a_id then f1.b_role
-           else ""
+           else ''
        end as role_out,
        case
            when f2.b_id = @a_id then f2.b_role
-           else ""
+           else ''
        end as role_in
 from users u
 left join friends f1 on f1.b_id = u.id and f1.a_id = @a_id

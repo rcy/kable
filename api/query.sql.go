@@ -700,11 +700,11 @@ const getConnection = `-- name: GetConnection :one
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin,
        case
            when f1.a_id = ?1 then f1.b_role
-           else ""
+           else ''
        end as role_out,
        case
            when f2.b_id = ?1 then f2.b_role
-           else ""
+           else ''
        end as role_in
 from users u
 left join friends f1 on f1.b_id = u.id and f1.a_id = ?1
@@ -728,8 +728,8 @@ type GetConnectionRow struct {
 	Bio          string
 	BecomeUserID sql.NullInt64
 	Admin        bool
-	RoleOut      interface{}
-	RoleIn       interface{}
+	RoleOut      string
+	RoleIn       string
 }
 
 func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error) {
@@ -854,11 +854,11 @@ const getCurrentAndPotentialParentConnections = `-- name: GetCurrentAndPotential
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin,
        case
            when f1.a_id = ?1 then f1.b_role
-           else ""
+           else ''
        end as role_out,
        case
            when f2.b_id = ?1 then f2.b_role
-           else ""
+           else ''
        end as role_in
 from users u
 left join friends f1 on f1.b_id = u.id and f1.a_id = ?1
@@ -881,8 +881,8 @@ type GetCurrentAndPotentialParentConnectionsRow struct {
 	Bio          string
 	BecomeUserID sql.NullInt64
 	Admin        bool
-	RoleOut      interface{}
-	RoleIn       interface{}
+	RoleOut      string
+	RoleIn       string
 }
 
 func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, aID int64) ([]GetCurrentAndPotentialParentConnectionsRow, error) {
