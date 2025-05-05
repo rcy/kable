@@ -205,7 +205,7 @@ func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
 }
 
 const assistantThreads = `-- name: AssistantThreads :many
-select id, created_at, thread_id, assistant_id, user_id from threads where assistant_id = ? and user_id = ?
+select id, created_at, thread_id, assistant_id, user_id from threads where assistant_id = ?1 and user_id = ?2
 `
 
 type AssistantThreadsParams struct {
@@ -246,9 +246,9 @@ const attemptNextQuestion = `-- name: AttemptNextQuestion :one
 select questions.id, questions.created_at, questions.quiz_id, questions.text, questions.answer from questions
 left join responses on responses.question_id = questions.id
 where
-  questions.id not in (select question_id from responses where responses.attempt_id = ?)
+  questions.id not in (select question_id from responses where responses.attempt_id = ?1)
 and
-  questions.quiz_id = ?
+  questions.quiz_id = ?2
 order by random()
 `
 
@@ -271,7 +271,7 @@ func (q *Queries) AttemptNextQuestion(ctx context.Context, arg AttemptNextQuesti
 }
 
 const attemptResponseIDs = `-- name: AttemptResponseIDs :many
-select id from responses where attempt_id = ?
+select id from responses where attempt_id = ?1
 `
 
 func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID interface{}) ([]int64, error) {
@@ -298,7 +298,7 @@ func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID interface{})
 }
 
 const bot = `-- name: Bot :one
-select id, created_at, owner_id, assistant_id, name, description, published from bots where id = ?
+select id, created_at, owner_id, assistant_id, name, description, published from bots where id = ?1
 `
 
 func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
@@ -317,7 +317,7 @@ func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
 }
 
 const createAttempt = `-- name: CreateAttempt :one
-insert into attempts(quiz_id, user_id) values(?,?) returning id, created_at, quiz_id, user_id
+insert into attempts(quiz_id, user_id) values(?1,?2) returning id, created_at, quiz_id, user_id
 `
 
 type CreateAttemptParams struct {
@@ -338,7 +338,7 @@ func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) (A
 }
 
 const createBot = `-- name: CreateBot :one
-insert into bots(owner_id, assistant_id, name, description) values(?,?,?,?) returning id, created_at, owner_id, assistant_id, name, description, published
+insert into bots(owner_id, assistant_id, name, description) values(?1,?2,?3,?4) returning id, created_at, owner_id, assistant_id, name, description, published
 `
 
 type CreateBotParams struct {
@@ -369,7 +369,7 @@ func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, erro
 }
 
 const createFriend = `-- name: CreateFriend :one
-insert into friends(a_id, b_id, b_role) values(?, ?, ?) returning id, created_at, a_id, b_id, b_role
+insert into friends(a_id, b_id, b_role) values(?1, ?2, ?3) returning id, created_at, a_id, b_id, b_role
 `
 
 type CreateFriendParams struct {
@@ -392,7 +392,7 @@ func (q *Queries) CreateFriend(ctx context.Context, arg CreateFriendParams) (Fri
 }
 
 const createKidParent = `-- name: CreateKidParent :one
-insert into kids_parents(kid_id, parent_id) values(?, ?) returning id, created_at, kid_id, parent_id
+insert into kids_parents(kid_id, parent_id) values(?1, ?2) returning id, created_at, kid_id, parent_id
 `
 
 type CreateKidParentParams struct {
@@ -413,7 +413,7 @@ func (q *Queries) CreateKidParent(ctx context.Context, arg CreateKidParentParams
 }
 
 const createNote = `-- name: CreateNote :one
-insert into notes(owner_id,body) values(?,?) returning id, created_at, owner_id, body, published
+insert into notes(owner_id,body) values(?1,?2) returning id, created_at, owner_id, body, published
 `
 
 type CreateNoteParams struct {
@@ -435,7 +435,7 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 }
 
 const createParent = `-- name: CreateParent :one
-insert into users(email, username, is_parent) values(?, ?, true) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+insert into users(email, username, is_parent) values(?1, ?2, true) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
 type CreateParentParams struct {
@@ -461,7 +461,7 @@ func (q *Queries) CreateParent(ctx context.Context, arg CreateParentParams) (Use
 }
 
 const createPostcard = `-- name: CreatePostcard :one
-insert into postcards(sender, recipient, subject, body, state) values(?,?,?,?,?) returning id, created_at, sender, recipient, subject, body, state
+insert into postcards(sender, recipient, subject, body, state) values(?1,?2,?3,?4,?5) returning id, created_at, sender, recipient, subject, body, state
 `
 
 type CreatePostcardParams struct {
@@ -494,7 +494,7 @@ func (q *Queries) CreatePostcard(ctx context.Context, arg CreatePostcardParams) 
 }
 
 const createQuestion = `-- name: CreateQuestion :one
-insert into questions(quiz_id, text, answer) values(?,?,?) returning id, created_at, quiz_id, text, answer
+insert into questions(quiz_id, text, answer) values(?1,?2,?3) returning id, created_at, quiz_id, text, answer
 `
 
 type CreateQuestionParams struct {
@@ -517,7 +517,7 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 }
 
 const createQuiz = `-- name: CreateQuiz :one
-insert into quizzes(name,description) values(?,?) returning id, created_at, name, description, published
+insert into quizzes(name,description) values(?1,?2) returning id, created_at, name, description, published
 `
 
 type CreateQuizParams struct {
@@ -539,7 +539,7 @@ func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, e
 }
 
 const createResponse = `-- name: CreateResponse :one
-insert into responses(quiz_id, user_id, attempt_id, question_id, text) values(?,?,?,?,?) returning id, created_at, quiz_id, user_id, attempt_id, question_id, text
+insert into responses(quiz_id, user_id, attempt_id, question_id, text) values(?1,?2,?3,?4,?5) returning id, created_at, quiz_id, user_id, attempt_id, question_id, text
 `
 
 type CreateResponseParams struct {
@@ -572,7 +572,7 @@ func (q *Queries) CreateResponse(ctx context.Context, arg CreateResponseParams) 
 }
 
 const createRoom = `-- name: CreateRoom :one
-insert into rooms(key) values(?) returning id, created_at, "key"
+insert into rooms(key) values(?1) returning id, created_at, "key"
 `
 
 func (q *Queries) CreateRoom(ctx context.Context, key string) (Room, error) {
@@ -583,7 +583,7 @@ func (q *Queries) CreateRoom(ctx context.Context, key string) (Room, error) {
 }
 
 const createRoomUser = `-- name: CreateRoomUser :one
-insert into room_users(room_id, user_id) values(?, ?) returning id, created_at, room_id, user_id
+insert into room_users(room_id, user_id) values(?1, ?2) returning id, created_at, room_id, user_id
 `
 
 type CreateRoomUserParams struct {
@@ -604,7 +604,7 @@ func (q *Queries) CreateRoomUser(ctx context.Context, arg CreateRoomUserParams) 
 }
 
 const createThread = `-- name: CreateThread :one
-insert into threads(user_id, thread_id, assistant_id) values(?,?,?) returning id, created_at, thread_id, assistant_id, user_id
+insert into threads(user_id, thread_id, assistant_id) values(?1,?2,?3) returning id, created_at, thread_id, assistant_id, user_id
 `
 
 type CreateThreadParams struct {
@@ -627,7 +627,7 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thr
 }
 
 const createUser = `-- name: CreateUser :one
-insert into users(username) values(?) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+insert into users(username) values(?1) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
 func (q *Queries) CreateUser(ctx context.Context, username string) (User, error) {
@@ -648,7 +648,7 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (User, error)
 }
 
 const deleteNote = `-- name: DeleteNote :exec
-delete from notes where id = ? and owner_id = ?
+delete from notes where id = ?1 and owner_id = ?2
 `
 
 type DeleteNoteParams struct {
@@ -662,7 +662,7 @@ func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) error {
 }
 
 const delivery = `-- name: Delivery :one
-select id, created_at, message_id, room_id, recipient_id, sender_id, sent_at from deliveries where id = ?
+select id, created_at, message_id, room_id, recipient_id, sender_id, sent_at from deliveries where id = ?1
 `
 
 func (q *Queries) Delivery(ctx context.Context, id int64) (Delivery, error) {
@@ -681,7 +681,7 @@ func (q *Queries) Delivery(ctx context.Context, id int64) (Delivery, error) {
 }
 
 const getAttemptByID = `-- name: GetAttemptByID :one
-select id, created_at, quiz_id, user_id from attempts where id = ?
+select id, created_at, quiz_id, user_id from attempts where id = ?1
 `
 
 func (q *Queries) GetAttemptByID(ctx context.Context, id int64) (Attempt, error) {
@@ -1158,7 +1158,7 @@ func (q *Queries) GetParents(ctx context.Context, aID int64) ([]User, error) {
 }
 
 const kidsByParentID = `-- name: KidsByParentID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = ? order by kids_parents.created_at desc
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = ?1 order by kids_parents.created_at desc
 `
 
 func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, error) {
@@ -1195,7 +1195,7 @@ func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, e
 }
 
 const messageByID = `-- name: MessageByID :one
-select id, created_at, sender_id, room_id, body from messages where id = ?
+select id, created_at, sender_id, room_id, body from messages where id = ?1
 `
 
 func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
@@ -1212,7 +1212,7 @@ func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
 }
 
 const parentByID = `-- name: ParentByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ? and is_parent = true
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ?1 and is_parent = true
 `
 
 func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
@@ -1233,7 +1233,7 @@ func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
 }
 
 const parentsByKidID = `-- name: ParentsByKidID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = ?
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = ?1
 `
 
 func (q *Queries) ParentsByKidID(ctx context.Context, kidID int64) ([]User, error) {
@@ -1371,7 +1371,7 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const question = `-- name: Question :one
-select id, created_at, quiz_id, text, answer from questions where id = ?
+select id, created_at, quiz_id, text, answer from questions where id = ?1
 `
 
 func (q *Queries) Question(ctx context.Context, id int64) (Question, error) {
@@ -1388,7 +1388,7 @@ func (q *Queries) Question(ctx context.Context, id int64) (Question, error) {
 }
 
 const questionCount = `-- name: QuestionCount :one
-select count(*) from questions where quiz_id = ?
+select count(*) from questions where quiz_id = ?1
 `
 
 func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error) {
@@ -1399,7 +1399,7 @@ func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error
 }
 
 const quiz = `-- name: Quiz :one
-select id, created_at, name, description, published from quizzes where id = ?
+select id, created_at, name, description, published from quizzes where id = ?1
 `
 
 func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
@@ -1416,7 +1416,7 @@ func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
 }
 
 const quizQuestions = `-- name: QuizQuestions :many
-select id, created_at, quiz_id, text, answer from questions where quiz_id = ?
+select id, created_at, quiz_id, text, answer from questions where quiz_id = ?1
 `
 
 func (q *Queries) QuizQuestions(ctx context.Context, quizID int64) ([]Question, error) {
@@ -1453,7 +1453,7 @@ select id, created_at, sender_id, room_id, body, sender_avatar_url from (
   select m.id, m.created_at, m.sender_id, m.room_id, m.body, sender.avatar_url as sender_avatar_url
    from messages m
    join users sender on m.sender_id = sender.id
-   where m.room_id = ?
+   where m.room_id = ?1
    order by m.created_at desc
    limit 128
   ) t
@@ -1500,7 +1500,7 @@ func (q *Queries) RecentRoomMessages(ctx context.Context, roomID string) ([]Rece
 }
 
 const responseCount = `-- name: ResponseCount :one
-select count(*) from responses where attempt_id = ?
+select count(*) from responses where attempt_id = ?1
 `
 
 func (q *Queries) ResponseCount(ctx context.Context, attemptID interface{}) (int64, error) {
@@ -1518,7 +1518,7 @@ select
    questions.answer = responses.text is_correct
 from responses
  join questions on responses.question_id = questions.id
- where attempt_id = ?
+ where attempt_id = ?1
 order by responses.created_at
 `
 
@@ -1570,7 +1570,7 @@ func (q *Queries) Responses(ctx context.Context, attemptID interface{}) ([]Respo
 }
 
 const roomByKey = `-- name: RoomByKey :one
-select id, created_at, "key" from rooms where key = ?
+select id, created_at, "key" from rooms where key = ?1
 `
 
 func (q *Queries) RoomByKey(ctx context.Context, key string) (Room, error) {
@@ -1581,7 +1581,7 @@ func (q *Queries) RoomByKey(ctx context.Context, key string) (Room, error) {
 }
 
 const setQuizPublished = `-- name: SetQuizPublished :one
-update quizzes set published = ? where id = ? returning id, created_at, name, description, published
+update quizzes set published = ?1 where id = ?2 returning id, created_at, name, description, published
 `
 
 type SetQuizPublishedParams struct {
@@ -1603,7 +1603,7 @@ func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedPara
 }
 
 const updateAvatar = `-- name: UpdateAvatar :one
-update users set avatar_url = ? where id = ? returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+update users set avatar_url = ?1 where id = ?2 returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
 type UpdateAvatarParams struct {
@@ -1629,7 +1629,7 @@ func (q *Queries) UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (Use
 }
 
 const updateBotDescription = `-- name: UpdateBotDescription :one
-update bots set description = ?, name = ? where id = ? and owner_id = ? returning id, created_at, owner_id, assistant_id, name, description, published
+update bots set description = ?1, name = ?2 where id = ?3 and owner_id = ?4 returning id, created_at, owner_id, assistant_id, name, description, published
 `
 
 type UpdateBotDescriptionParams struct {
@@ -1660,7 +1660,7 @@ func (q *Queries) UpdateBotDescription(ctx context.Context, arg UpdateBotDescrip
 }
 
 const updateNote = `-- name: UpdateNote :one
-update notes set body = ? where id = ? and owner_id = ? returning id, created_at, owner_id, body, published
+update notes set body = ?1 where id = ?2 and owner_id = ?3 returning id, created_at, owner_id, body, published
 `
 
 type UpdateNoteParams struct {
@@ -1683,7 +1683,7 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 }
 
 const updateQuestion = `-- name: UpdateQuestion :one
-update questions set text = ?, answer = ? where id = ? returning id, created_at, quiz_id, text, answer
+update questions set text = ?1, answer = ?2 where id = ?3 returning id, created_at, quiz_id, text, answer
 `
 
 type UpdateQuestionParams struct {
@@ -1706,7 +1706,7 @@ func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) 
 }
 
 const updateQuiz = `-- name: UpdateQuiz :one
-update quizzes set name = ?, description = ? where id = ? returning id, created_at, name, description, published
+update quizzes set name = ?1, description = ?2 where id = ?3 returning id, created_at, name, description, published
 `
 
 type UpdateQuizParams struct {
@@ -1729,7 +1729,7 @@ func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, e
 }
 
 const userByEmail = `-- name: UserByEmail :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where email = ?
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where email = ?1
 `
 
 func (q *Queries) UserByEmail(ctx context.Context, email sql.NullString) (User, error) {
@@ -1750,7 +1750,7 @@ func (q *Queries) UserByEmail(ctx context.Context, email sql.NullString) (User, 
 }
 
 const userByID = `-- name: UserByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ?
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ?1
 `
 
 func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
@@ -1771,7 +1771,7 @@ func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const userBySessionKey = `-- name: UserBySessionKey :one
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from sessions join users on sessions.user_id = users.id where sessions.key = ?
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from sessions join users on sessions.user_id = users.id where sessions.key = ?1
 `
 
 func (q *Queries) UserBySessionKey(ctx context.Context, key interface{}) (User, error) {
@@ -1792,7 +1792,7 @@ func (q *Queries) UserBySessionKey(ctx context.Context, key interface{}) (User, 
 }
 
 const userByUsername = `-- name: UserByUsername :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where username = ?
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where username = ?1
 `
 
 func (q *Queries) UserByUsername(ctx context.Context, username string) (User, error) {
@@ -1813,7 +1813,7 @@ func (q *Queries) UserByUsername(ctx context.Context, username string) (User, er
 }
 
 const userGradient = `-- name: UserGradient :one
-select id, created_at, user_id, gradient from gradients where user_id = ? order by created_at desc limit 1
+select id, created_at, user_id, gradient from gradients where user_id = ?1 order by created_at desc limit 1
 `
 
 func (q *Queries) UserGradient(ctx context.Context, userID int64) (Gradient, error) {
@@ -1829,7 +1829,7 @@ func (q *Queries) UserGradient(ctx context.Context, userID int64) (Gradient, err
 }
 
 const userNotes = `-- name: UserNotes :many
-select id, created_at, owner_id, body, published from notes where owner_id = ? order by created_at desc
+select id, created_at, owner_id, body, published from notes where owner_id = ?1 order by created_at desc
 `
 
 func (q *Queries) UserNotes(ctx context.Context, ownerID int64) ([]Note, error) {
@@ -1865,7 +1865,7 @@ const userPostcardsReceived = `-- name: UserPostcardsReceived :many
 select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, s.username, s.avatar_url
 from postcards p
 join users s on p.sender = s.id
-where recipient = ?
+where recipient = ?1
 order by p.created_at desc
 `
 
@@ -1918,7 +1918,7 @@ const userPostcardsSent = `-- name: UserPostcardsSent :many
 select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, r.username, r.avatar_url
 from postcards p
 join users r on p.recipient = r.id
-where sender = ?
+where sender = ?1
 order by p.created_at desc
 `
 
@@ -1968,7 +1968,7 @@ func (q *Queries) UserPostcardsSent(ctx context.Context, sender int64) ([]UserPo
 }
 
 const userThreadByID = `-- name: UserThreadByID :one
-select id, created_at, thread_id, assistant_id, user_id from threads where user_id = ? and thread_id = ?
+select id, created_at, thread_id, assistant_id, user_id from threads where user_id = ?1 and thread_id = ?2
 `
 
 type UserThreadByIDParams struct {
@@ -1990,7 +1990,7 @@ func (q *Queries) UserThreadByID(ctx context.Context, arg UserThreadByIDParams) 
 }
 
 const userVisibleBots = `-- name: UserVisibleBots :many
-select id, created_at, owner_id, assistant_id, name, description, published from bots where owner_id = ? or published = 1
+select id, created_at, owner_id, assistant_id, name, description, published from bots where owner_id = ?1 or published = 1
 `
 
 func (q *Queries) UserVisibleBots(ctx context.Context, ownerID int64) ([]Bot, error) {
@@ -2028,7 +2028,7 @@ const usersWithUnreadCounts = `-- name: UsersWithUnreadCounts :many
 select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, count(*) unread_count
 from deliveries
 join users on sender_id = users.id
-where recipient_id = ? and sent_at is null
+where recipient_id = ?1 and sent_at is null
 group by users.username
 `
 
