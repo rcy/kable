@@ -35,7 +35,7 @@ db/pgschema.sql:
 	mv /tmp/schema $@
 
 generate: db/schema-fixed.sql db/pgschema.sql
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
 getproddb:
 	fly ssh sftp get /data/oj_production.db
