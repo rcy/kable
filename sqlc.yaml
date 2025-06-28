@@ -5,22 +5,23 @@ sql:
     schema: "db/schema-fixed.sql"
     gen:
       go:
-        package: "api"
-        out: "api"
+        package: "api3"
+        out: "api3"
         rename:
           sender_avatar_url: "SenderAvatarURL"
           avatar_url: "AvatarURL"
         overrides:
           - column: "gradients.gradient"
             go_type: "oj/element/gradient.Gradient"
+
   - engine: "postgresql"
     queries: "db/query.sql"
     schema: "db/pgschema.sql"
     gen:
       go:
-        package: "pgapi"
+        package: "api"
         sql_package: "pgx/v5"
-        out: "apipg"
+        out: "api"
         rename:
           sender_avatar_url: "SenderAvatarURL"
           avatar_url: "AvatarURL"

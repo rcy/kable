@@ -44,3 +44,9 @@ getproddb:
 
 test:
 	. ./.env.test && go test ./...
+
+migrate:
+	cd migrations && tern migrate
+
+migrate.%:
+	cd migrations && tern migrate -d $*

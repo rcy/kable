@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
@@ -15,18 +14,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
 var (
 	//go:embed page.gohtml
 	pageContent  string
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
-	queries := api.New(db.DB)
 
-	allNotes, err := queries.UserNotes(ctx, l.User.ID)
+	allNotes, err := s.Queries.UserNotes(ctx, l.User.ID)
 	if err != nil && err != sql.ErrNoRows {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -41,11 +47,10 @@ func Page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func Post(w http.ResponseWriter, r *http.Request) {
+func (s *service) Post(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
-	queries := api.New(db.DB)
-	note, err := queries.CreateNote(ctx, api.CreateNoteParams{
+	note, err := s.Queries.CreateNote(ctx, api.CreateNoteParams{
 		OwnerID: user.ID,
 	})
 	if err != nil {
@@ -55,20 +60,19 @@ func Post(w http.ResponseWriter, r *http.Request) {
 	render.ExecuteNamed(w, pageTemplate, "note", note)
 }
 
-func PostFromChat(w http.ResponseWriter, r *http.Request) {
+func (s *service) PostFromChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
-	queries := api.New(db.DB)
 
 	messageID, _ := strconv.Atoi(chi.URLParam(r, "messageID"))
 
-	msg, err := queries.MessageByID(ctx, int64(messageID))
+	msg, err := s.Queries.MessageByID(ctx, int64(messageID))
 	if err != nil {
 		render.Error(w, "messageByID: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	sender, err := queries.UserByID(ctx, msg.SenderID)
+	sender, err := s.Queries.UserByID(ctx, msg.SenderID)
 	if err != nil {
 		render.Error(w, "UserByID: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -76,7 +80,7 @@ func PostFromChat(w http.ResponseWriter, r *http.Request) {
 
 	body := fmt.Sprintf("From: %s\n%s", sender.Username, msg.Body)
 
-	note, err := queries.CreateNote(ctx, api.CreateNoteParams{
+	note, err := s.Queries.CreateNote(ctx, api.CreateNoteParams{
 		OwnerID: user.ID,
 		Body:    body,
 	})
@@ -88,13 +92,12 @@ func PostFromChat(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("saved note %d", note.ID)))
 }
 
-func Put(w http.ResponseWriter, r *http.Request) {
+func (s *service) Put(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("body")
 	ctx := r.Context()
 	noteID, _ := strconv.Atoi(chi.URLParam(r, "noteID"))
 	user := auth.FromContext(ctx)
-	queries := api.New(db.DB)
-	_, err := queries.UpdateNote(ctx, api.UpdateNoteParams{
+	_, err := s.Queries.UpdateNote(ctx, api.UpdateNoteParams{
 		ID:      int64(noteID),
 		OwnerID: user.ID,
 		Body:    body,
@@ -105,12 +108,11 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Delete(w http.ResponseWriter, r *http.Request) {
+func (s *service) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	noteID, _ := strconv.Atoi(chi.URLParam(r, "noteID"))
 	user := auth.FromContext(ctx)
-	queries := api.New(db.DB)
-	err := queries.DeleteNote(ctx, api.DeleteNoteParams{
+	err := s.Queries.DeleteNote(ctx, api.DeleteNoteParams{
 		ID:      int64(noteID),
 		OwnerID: user.ID,
 	})

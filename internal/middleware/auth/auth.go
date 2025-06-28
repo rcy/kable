@@ -5,15 +5,23 @@ import (
 	"errors"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"time"
 )
 
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{
+		Queries: q,
+	}
+}
+
 // Provide user in context based on session cookie, redirecting to login if no session found
-func Provider(next http.Handler) http.Handler {
+func (s *service) Provider(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		queries := api.New(db.DB)
 
 		cookie, err := r.Cookie("kh_session")
 		if err != nil {
@@ -21,7 +29,7 @@ func Provider(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := queries.UserBySessionKey(ctx, cookie.Value)
+		user, err := s.Queries.UserBySessionKey(ctx, cookie.Value)
 		if err != nil {
 			redirectToLogin(w, r)
 			return

@@ -7,16 +7,16 @@ import (
 	"math"
 	"oj/api"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func FindOrCreateByUserIDs(ctx context.Context, db *sqlx.DB, model *api.Queries, id1, id2 int64) (*api.Room, error) {
+func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Conn, model *api.Queries, id1, id2 int64) (*api.Room, error) {
 	key := makeRoomKey(id1, id2)
 
 	room, err := model.RoomByKey(ctx, key)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return build(ctx, db, model, key, id1, id2)
+			return build(ctx, conn, model, key, id1, id2)
 		}
 		return nil, err
 	}
@@ -24,12 +24,12 @@ func FindOrCreateByUserIDs(ctx context.Context, db *sqlx.DB, model *api.Queries,
 }
 
 // Create room and add users
-func build(ctx context.Context, db *sqlx.DB, model *api.Queries, key string, userID1, userID2 int64) (*api.Room, error) {
-	tx, err := db.BeginTx(ctx, nil)
+func build(ctx context.Context, conn *pgxpool.Conn, model *api.Queries, key string, userID1, userID2 int64) (*api.Room, error) {
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 	txModel := model.WithTx(tx)
 
 	room, err := txModel.CreateRoom(ctx, key)
@@ -47,7 +47,7 @@ func build(ctx context.Context, db *sqlx.DB, model *api.Queries, key string, use
 		}
 	}
 
-	err = tx.Commit()
+	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
 	}

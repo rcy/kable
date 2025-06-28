@@ -9,16 +9,23 @@ import (
 	"net/url"
 	"oj/api"
 	"oj/app"
-	"oj/db"
 	"oj/services/email"
 	"time"
 
 	"github.com/acaloiaro/neoq/jobs"
+	"github.com/georgysavva/scany/v2/pgxscan"
 )
 
-func Handle(ctx context.Context) error {
-	queries := api.New(db.DB)
+type service struct {
+	Queries *api.Queries
+	Conn    pgxscan.Querier
+}
 
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Handle(ctx context.Context) error {
 	j, err := jobs.FromContext(ctx)
 	if err != nil {
 		return err
@@ -34,7 +41,7 @@ func Handle(ctx context.Context) error {
 		BUsername string    `db:"b_username"`
 	}
 
-	err = db.DB.Get(&friend, `
+	err = pgxscan.Get(ctx, s.Conn, &friend, `
 select
   f.id, f.created_at,
   a.id a_id,
@@ -51,14 +58,14 @@ where f.id = ?
 	}
 
 	var mutualID int64
-	err = db.DB.Get(&mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
+	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("getting mutual %w", err)
 	}
 
 	aUserLink := app.AbsoluteURL(url.URL{Path: fmt.Sprintf("/u/%d", friend.AID)})
 
-	bParents, err := queries.ParentsByKidID(ctx, friend.BID)
+	bParents, err := s.Queries.ParentsByKidID(ctx, friend.BID)
 	if err != nil {
 		return fmt.Errorf("GetParents %w", err)
 	}
@@ -79,7 +86,7 @@ where f.id = ?
 		}
 	}
 
-	aParents, err := queries.ParentsByKidID(ctx, friend.AID)
+	aParents, err := s.Queries.ParentsByKidID(ctx, friend.AID)
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,13 @@
-load: oj-fixed.sqlite
-	pgloader ./db.load
+load-schema: oj-fixed.db
+	pgloader ./schema.load
 
-oj-fixed.sqlite: dump.sql
+load-data: oj-fixed.db
+	pgloader ./data.load
+
+oj-fixed.db: dump.sql
 	sqlite3 $@ < $<
 
-dump.raw.sql: ./oj.sqlite
+dump.raw.sql: oj_production.db
 	sqlite3 $< .dump > $@
 
 dump.timestamps.sql: dump.raw.sql
@@ -22,5 +25,11 @@ dump.idtypes1.sql: dump.idtypes.sql
 dump.sql: dump.idtypes1.sql
 	cp $< $@
 
+oj_production.db:
+	fly -a octopusjr ssh sftp get /data/$@
+	fly -a octopusjr ssh sftp get /data/$@-shm
+	fly -a octopusjr ssh sftp get /data/$@-wal
+	sqlite3 $@ "PRAGMA wal_checkpoint(FULL);"
+
 clean:
-	rm -f dump.sql dump.*.sql oj-fixed.sqlite
+	rm -f dump.sql dump.*.sql oj-fixed.db oj_production.db

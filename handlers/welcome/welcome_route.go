@@ -11,27 +11,37 @@ import (
 	mathrand "math/rand"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/render"
 	"oj/services/email"
 	"oj/services/family"
 	"time"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Route(r chi.Router) {
+type service struct {
+	Conn    *pgxpool.Conn
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Conn) *service {
+	return &service{Queries: q, Conn: conn}
+}
+
+func (s *service) Route(r chi.Router) {
 	r.Get("/", welcome)
 
 	r.Get("/parents", welcomeParents)
-	r.Post("/parents/email", emailRegisterAction)
+	r.Post("/parents/email", s.emailRegisterAction)
 	r.Get("/parents/code", parentsCode)
-	r.Post("/parents/code", parentsCodeAction)
+	r.Post("/parents/code", s.parentsCodeAction)
 
 	r.Get("/kids", welcomeKids)
-	r.Post("/kids/username", kidsUsernameAction)
+	r.Post("/kids/username", s.kidsUsernameAction)
 	r.Get("/kids/code", kidsCode)
-	r.Post("/kids/code", kidsCodeAction)
+	r.Post("/kids/code", s.kidsCodeAction)
 
 	r.Get("/signout", signout)
 }
@@ -91,7 +101,8 @@ func generateDigitCode() string {
 	return code
 }
 
-func emailRegisterAction(w http.ResponseWriter, r *http.Request) {
+func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	address := r.FormValue("email")
 	if address == "" {
 		http.Redirect(w, r, "/welcome/parents", http.StatusSeeOther)
@@ -105,9 +116,9 @@ func emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateDigitCode()
-	_, err = db.DB.Exec("insert into codes(nonce, email, code) values(?, ?, ?)", nonce, address, code)
+	_, err = s.Conn.Exec(ctx, "insert into codes(nonce, email, code) values($1, $2, $3)", nonce, address, code)
 	if err != nil {
-		render.Error(w, "Error generating code YQChKPeCivnvM9P82", 500)
+		render.Error(w, fmt.Sprintf("insert into codes: %s", err), 500)
 		return
 	}
 
@@ -138,13 +149,12 @@ func parentsCode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
+func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	username := r.FormValue("username")
 
-	user, err := queries.UserByUsername(r.Context(), username)
+	user, err := s.Queries.UserByUsername(r.Context(), username)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = welcomeKidsTemplate.Execute(w, struct{ Error string }{"User not found"})
@@ -164,7 +174,7 @@ func kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateDigitCode()
-	_, err = db.DB.Exec("insert into kids_codes(nonce, user_id, code) values(?, ?, ?)", nonce, user.ID, code)
+	_, err = s.Conn.Exec(ctx, "insert into kids_codes(nonce, user_id, code) values($1, $2, $3)", nonce, user.ID, code)
 	if err != nil {
 		render.Error(w, "Error generating code qYBJ24gqRrmFEJWAs", 500)
 		return
@@ -173,7 +183,7 @@ func kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: "kh_nonce", Value: nonce, Path: "/", Expires: time.Now().Add(time.Hour)})
 
 	// email code to kids parent(s)
-	parents, err := queries.ParentsByKidID(ctx, user.ID)
+	parents, err := s.Queries.ParentsByKidID(ctx, user.ID)
 	if err != nil {
 		render.Error(w, "Error getting parents wdEXqpGbDeTc69Ju3", 500)
 		return
@@ -210,9 +220,8 @@ func kidsCode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func kidsCodeAction(w http.ResponseWriter, r *http.Request) {
+func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	var userID int64
 
@@ -230,7 +239,7 @@ func kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 
 	// look up code
 	// XXX fetch by id alone, compare code, and add retry count
-	err = db.DB.Get(&userID, "select user_id from kids_codes where nonce = ? and code = ?", nonce, code)
+	err = pgxscan.Get(ctx, s.Conn, &userID, "select user_id from kids_codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			render.Error(w, "Error retrieving code RkfeaQB4rAX7uxdY3", 500)
@@ -242,7 +251,7 @@ func kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 		log.Println("code is good")
 		// found email, code is good
 		// create user if not exists
-		user, err := queries.UserByID(ctx, userID)
+		user, err := s.Queries.UserByID(ctx, userID)
 		if err != nil {
 			render.Error(w, "error getting user:"+err.Error(), 500)
 			return
@@ -254,7 +263,7 @@ func kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 			render.Error(w, "error creating session", 500)
 			return
 		}
-		_, err = db.DB.Exec("insert into sessions(key, user_id) values(?, ?)", key, user.ID)
+		_, err = s.Conn.Exec(ctx, "insert into sessions(key, user_id) values($1, $2)", key, user.ID)
 		if err != nil {
 			render.Error(w, "error creating session", 500)
 			return
@@ -277,7 +286,7 @@ func kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parentsCodeAction(w http.ResponseWriter, r *http.Request) {
+func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var email string
@@ -296,10 +305,10 @@ func parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 
 	// look up code
 	// XXX fetch by id alone, compare code, and add retry count
-	err = db.DB.Get(&email, "select email from codes where nonce = ? and code = ?", nonce, code)
+	err = pgxscan.Get(ctx, s.Conn, &email, "select email from codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			render.Error(w, "Error retrieving code qmNpb3qvPM8oGwmLn", 500)
+			render.Error(w, fmt.Sprintf("Error retrieving code: %s", err), 500)
 			return
 		}
 	}
@@ -308,7 +317,7 @@ func parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 		log.Println("code is good")
 		// found email, code is good
 		// create user if not exists
-		user, err := family.FindOrCreateParentByEmail(ctx, email)
+		user, err := family.FindOrCreateParentByEmail(ctx, s.Queries, email)
 		if err != nil {
 			render.Error(w, "error getting user: "+err.Error(), 500)
 			return
@@ -317,12 +326,12 @@ func parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 		// create a new session
 		key, err := generateSecureString(32)
 		if err != nil {
-			render.Error(w, "error creating session", 500)
+			render.Error(w, fmt.Sprintf("error creating session: %s", err), 500)
 			return
 		}
-		_, err = db.DB.Exec("insert into sessions(key, user_id) values(?, ?)", key, user.ID)
+		_, err = s.Conn.Exec(ctx, "insert into sessions(key, user_id) values($1, $2)", key, user.ID)
 		if err != nil {
-			render.Error(w, "error creating session", 500)
+			render.Error(w, fmt.Sprintf("error creating session: %s", err), 500)
 			return
 		}
 		// set session cookie

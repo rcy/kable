@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/admin/quizzes/create"
 	"oj/handlers/admin/quizzes/show"
 	"oj/handlers/layout"
@@ -14,10 +13,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(r chi.Router) {
-	r.Get("/", page)
-	r.Route("/create", create.Router)
-	r.Route("/{quizID}", show.Router)
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Router(r chi.Router) {
+	r.Get("/", s.page)
+	r.Route("/create", create.NewService(s.Queries).Router)
+	r.Route("/{quizID}", show.NewService(s.Queries).Router)
 }
 
 var (
@@ -26,13 +33,11 @@ var (
 	pageTemplate = layout.MustParse(pageContent, pageContent)
 )
 
-func page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
 
-	queries := api.New(db.DB)
-
-	allQuizzes, err := queries.AllQuizzes(ctx)
+	allQuizzes, err := s.Queries.AllQuizzes(ctx)
 	if err != nil && err != sql.ErrNoRows {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return

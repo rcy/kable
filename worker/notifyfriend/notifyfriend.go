@@ -7,15 +7,26 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"oj/api"
 	"oj/app"
-	"oj/db"
 	"oj/services/email"
 	"time"
 
 	"github.com/acaloiaro/neoq/jobs"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Handle(ctx context.Context) error {
+type service struct {
+	Conn    *pgxpool.Conn
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Conn) *service {
+	return &service{Queries: q, Conn: conn}
+}
+
+func (s *service) Handle(ctx context.Context) error {
 	j, err := jobs.FromContext(ctx)
 	if err != nil {
 		return err
@@ -32,7 +43,7 @@ func Handle(ctx context.Context) error {
 		TargetEmail string    `db:"target_email"`
 	}
 
-	err = db.DB.Get(&friend, `
+	err = pgxscan.Get(ctx, s.Conn, &friend, `
 select
   f.id, f.created_at,
   a.id a_id, a.email, a.username,
@@ -47,7 +58,7 @@ where f.id = ?
 	}
 
 	var mutualID int64
-	err = db.DB.Get(&mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
+	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}

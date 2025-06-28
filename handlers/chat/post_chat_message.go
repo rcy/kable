@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexandrevicenzi/go-sse"
+	"github.com/georgysavva/scany/v2/pgxscan"
 )
 
 func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
@@ -48,29 +49,26 @@ type RoomUser struct {
 func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body string) error {
 	var roomUsers []RoomUser
 
-	tx, err := rs.DB.Beginx()
+	tx, err := rs.Conn.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
-	_, err = rs.Model.UserByID(ctx, senderID)
+	_, err = rs.Queries.UserByID(ctx, senderID)
 	if err != nil {
 		return err
 	}
 
 	// get the users of the room
-	err = tx.Select(&roomUsers, `select room_users.*, users.email from room_users join users on room_users.user_id = users.id where room_id = ?`, roomID)
+	err = pgxscan.Select(ctx, tx, &roomUsers, `select room_users.*, users.email from room_users join users on room_users.user_id = users.id where room_id = ?`, roomID)
 	if err != nil {
 		return err
 	}
 
 	// create the message
-	result, err := tx.Exec(`insert into messages(room_id, sender_id, body) values(?,?,?)`, roomID, senderID, body)
-	if err != nil {
-		return err
-	}
-	messageID, err := result.LastInsertId()
+	var messageID int64
+	err = pgxscan.Get(ctx, tx, &messageID, `insert into messages(room_id, sender_id, body) values(?,?,?) returning id`, roomID, senderID, body)
 	if err != nil {
 		return err
 	}
@@ -78,12 +76,8 @@ func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body
 	// create deliveries for each user in the room
 	var deliveryIDs []int64
 	for _, roomUser := range roomUsers {
-		result, err = tx.Exec(`insert into deliveries(message_id, room_id, sender_id, recipient_id) values(?,?,?,?)`, messageID, roomID, senderID, roomUser.UserID)
-		if err != nil {
-			return err
-		}
-
-		deliveryID, err := result.LastInsertId()
+		var deliveryID int64
+		err = pgxscan.Get(ctx, tx, &deliveryID, `insert into deliveries(message_id, room_id, sender_id, recipient_id) values(?,?,?,?) returning id`, messageID, roomID, senderID, roomUser.UserID)
 		if err != nil {
 			return err
 		}
@@ -91,7 +85,7 @@ func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body
 		deliveryIDs = append(deliveryIDs, deliveryID)
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 

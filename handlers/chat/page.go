@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"database/sql"
 	_ "embed"
 	"fmt"
@@ -18,12 +19,16 @@ import (
 
 	"github.com/alexandrevicenzi/go-sse"
 	"github.com/go-chi/chi/v5"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Resource struct {
-	Model *api.Queries
-	DB    *sqlx.DB
+	Queries *api.Queries
+	Conn    *pgxpool.Conn
+}
+
+func NewService(q *api.Queries) *Resource {
+	return &Resource{Queries: q}
 }
 
 var (
@@ -37,26 +42,26 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 	user := auth.FromContext(ctx)
 
 	pageUserID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	pageUser, err := rs.Model.UserByID(ctx, int64(pageUserID))
+	pageUser, err := rs.Queries.UserByID(ctx, int64(pageUserID))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			render.Error(w, "User not found", 404)
 			return
 		}
 	}
-	ug, err := background.ForUser(ctx, pageUser.ID)
+	ug, err := background.ForUser(ctx, rs.Queries, pageUser.ID)
 	if err != nil {
 		render.Error(w, err.Error(), 500)
 		return
 	}
 
-	room, err := room.FindOrCreateByUserIDs(ctx, rs.DB, rs.Model, user.ID, pageUser.ID)
+	room, err := room.FindOrCreateByUserIDs(ctx, rs.Conn, rs.Queries, user.ID, pageUser.ID)
 	if err != nil {
 		render.Error(w, err.Error(), 500)
 		return
 	}
 
-	records, err := rs.Model.RecentRoomMessages(ctx, fmt.Sprint(room.ID))
+	records, err := rs.Queries.RecentRoomMessages(ctx, room.ID)
 	if err != nil {
 		render.Error(w, "api selecting messages: "+err.Error(), 500)
 		return
@@ -69,9 +74,9 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the layout after the deliveries have been updated to ensure unread count is correct
-	l, err := layout.FromUser(ctx, user)
+	l, err := layout.NewService(rs.Queries, rs.Conn).FromUser(ctx, user)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, "FromUser: "+err.Error(), 500)
 		return
 	}
 	// override layout gradient to show the page user's not the request user's
@@ -99,7 +104,10 @@ func (rs Resource) updateDeliveries(roomID, userID int64) error {
 	defer udMut.Unlock()
 
 	log.Printf("UPDATE DELIVERIES %d", userID)
-	_, err := rs.DB.Exec(`update deliveries set sent_at = current_timestamp where sent_at is null and room_id = ? and recipient_id = ?`, roomID, userID)
+	_, err := rs.Conn.Exec(context.TODO(), `update deliveries set sent_at = current_timestamp where sent_at is null and room_id = ? and recipient_id = ?`, roomID, userID)
+	if err != nil {
+		return fmt.Errorf("Exec", err)
+	}
 	log.Printf("UPDATE DELIVERIES %d...done", userID)
 
 	eventsource.SSE.SendMessage(

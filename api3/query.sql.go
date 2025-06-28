@@ -3,24 +3,25 @@
 //   sqlc v1.29.0
 // source: query.sql
 
-package pgapi
+package api3
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"oj/element/gradient"
 )
 
 const adminDeleteMessage = `-- name: AdminDeleteMessage :one
 update messages
 set body = '+++ deleted +++'
-where id = $1
+where id = ?1
 returning id, created_at, sender_id, room_id, body
 `
 
 func (q *Queries) AdminDeleteMessage(ctx context.Context, id int64) (Message, error) {
-	row := q.db.QueryRow(ctx, adminDeleteMessage, id)
+	row := q.db.QueryRowContext(ctx, adminDeleteMessage, id)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -45,16 +46,16 @@ select
 
 type AdminRecentMessagesRow struct {
 	ID              int64
-	CreatedAt       pgtype.Timestamptz
-	SenderID        pgtype.Int8
-	RoomID          pgtype.Int8
-	Body            pgtype.Text
-	SenderUsername  pgtype.Text
-	SenderAvatarURL pgtype.Text
+	CreatedAt       time.Time
+	SenderID        int64
+	RoomID          string
+	Body            string
+	SenderUsername  string
+	SenderAvatarURL string
 }
 
 func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessagesRow, error) {
-	rows, err := q.db.Query(ctx, adminRecentMessages)
+	rows, err := q.db.QueryContext(ctx, adminRecentMessages)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +76,9 @@ func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessage
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -91,7 +95,7 @@ type AllBotsRow struct {
 }
 
 func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
-	rows, err := q.db.Query(ctx, allBots)
+	rows, err := q.db.QueryContext(ctx, allBots)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +125,9 @@ func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -132,7 +139,7 @@ select id, created_at, name, description, published from quizzes order by create
 `
 
 func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
-	rows, err := q.db.Query(ctx, allQuizzes)
+	rows, err := q.db.QueryContext(ctx, allQuizzes)
 	if err != nil {
 		return nil, err
 	}
@@ -151,6 +158,9 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -162,7 +172,7 @@ select id, created_at, username, email, avatar_url, is_parent, bio, become_user_
 `
 
 func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.Query(ctx, allUsers)
+	rows, err := q.db.QueryContext(ctx, allUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +195,9 @@ func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -192,16 +205,16 @@ func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
 }
 
 const assistantThreads = `-- name: AssistantThreads :many
-select id, created_at, thread_id, assistant_id, user_id from threads where assistant_id = $1 and user_id = $2
+select id, created_at, thread_id, assistant_id, user_id from threads where assistant_id = ?1 and user_id = ?2
 `
 
 type AssistantThreadsParams struct {
-	AssistantID pgtype.Text
-	UserID      pgtype.Int8
+	AssistantID string
+	UserID      int64
 }
 
 func (q *Queries) AssistantThreads(ctx context.Context, arg AssistantThreadsParams) ([]Thread, error) {
-	rows, err := q.db.Query(ctx, assistantThreads, arg.AssistantID, arg.UserID)
+	rows, err := q.db.QueryContext(ctx, assistantThreads, arg.AssistantID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +233,9 @@ func (q *Queries) AssistantThreads(ctx context.Context, arg AssistantThreadsPara
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -230,19 +246,19 @@ const attemptNextQuestion = `-- name: AttemptNextQuestion :one
 select questions.id, questions.created_at, questions.quiz_id, questions.text, questions.answer from questions
 left join responses on responses.question_id = questions.id
 where
-  questions.id not in (select question_id from responses where responses.attempt_id = $1)
+  questions.id not in (select question_id from responses where responses.attempt_id = ?1)
 and
-  questions.quiz_id = $2
+  questions.quiz_id = ?2
 order by random()
 `
 
 type AttemptNextQuestionParams struct {
-	AttemptID pgtype.Int8
-	QuizID    pgtype.Int8
+	AttemptID interface{}
+	QuizID    int64
 }
 
 func (q *Queries) AttemptNextQuestion(ctx context.Context, arg AttemptNextQuestionParams) (Question, error) {
-	row := q.db.QueryRow(ctx, attemptNextQuestion, arg.AttemptID, arg.QuizID)
+	row := q.db.QueryRowContext(ctx, attemptNextQuestion, arg.AttemptID, arg.QuizID)
 	var i Question
 	err := row.Scan(
 		&i.ID,
@@ -255,11 +271,11 @@ func (q *Queries) AttemptNextQuestion(ctx context.Context, arg AttemptNextQuesti
 }
 
 const attemptResponseIDs = `-- name: AttemptResponseIDs :many
-select id from responses where attempt_id = $1
+select id from responses where attempt_id = ?1
 `
 
-func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID pgtype.Int8) ([]int64, error) {
-	rows, err := q.db.Query(ctx, attemptResponseIDs, attemptID)
+func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID interface{}) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, attemptResponseIDs, attemptID)
 	if err != nil {
 		return nil, err
 	}
@@ -272,6 +288,9 @@ func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID pgtype.Int8)
 		}
 		items = append(items, id)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -279,11 +298,11 @@ func (q *Queries) AttemptResponseIDs(ctx context.Context, attemptID pgtype.Int8)
 }
 
 const bot = `-- name: Bot :one
-select id, created_at, owner_id, assistant_id, name, description, published from bots where id = $1
+select id, created_at, owner_id, assistant_id, name, description, published from bots where id = ?1
 `
 
 func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
-	row := q.db.QueryRow(ctx, bot, id)
+	row := q.db.QueryRowContext(ctx, bot, id)
 	var i Bot
 	err := row.Scan(
 		&i.ID,
@@ -298,16 +317,16 @@ func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
 }
 
 const createAttempt = `-- name: CreateAttempt :one
-insert into attempts(quiz_id, user_id) values($1,$2) returning id, created_at, quiz_id, user_id
+insert into attempts(quiz_id, user_id) values(?1,?2) returning id, created_at, quiz_id, user_id
 `
 
 type CreateAttemptParams struct {
-	QuizID pgtype.Int8
-	UserID pgtype.Int8
+	QuizID int64
+	UserID int64
 }
 
 func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) (Attempt, error) {
-	row := q.db.QueryRow(ctx, createAttempt, arg.QuizID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, createAttempt, arg.QuizID, arg.UserID)
 	var i Attempt
 	err := row.Scan(
 		&i.ID,
@@ -319,18 +338,18 @@ func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) (A
 }
 
 const createBot = `-- name: CreateBot :one
-insert into bots(owner_id, assistant_id, name, description) values($1,$2,$3,$4) returning id, created_at, owner_id, assistant_id, name, description, published
+insert into bots(owner_id, assistant_id, name, description) values(?1,?2,?3,?4) returning id, created_at, owner_id, assistant_id, name, description, published
 `
 
 type CreateBotParams struct {
-	OwnerID     pgtype.Int8
-	AssistantID pgtype.Text
-	Name        pgtype.Text
-	Description pgtype.Text
+	OwnerID     int64
+	AssistantID string
+	Name        string
+	Description string
 }
 
 func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, error) {
-	row := q.db.QueryRow(ctx, createBot,
+	row := q.db.QueryRowContext(ctx, createBot,
 		arg.OwnerID,
 		arg.AssistantID,
 		arg.Name,
@@ -350,17 +369,17 @@ func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, erro
 }
 
 const createFriend = `-- name: CreateFriend :one
-insert into friends(a_id, b_id, b_role) values($1, $2, $3) returning id, created_at, a_id, b_id, b_role
+insert into friends(a_id, b_id, b_role) values(?1, ?2, ?3) returning id, created_at, a_id, b_id, b_role
 `
 
 type CreateFriendParams struct {
-	AID   pgtype.Int8
-	BID   pgtype.Int8
-	BRole pgtype.Text
+	AID   int64
+	BID   int64
+	BRole string
 }
 
 func (q *Queries) CreateFriend(ctx context.Context, arg CreateFriendParams) (Friend, error) {
-	row := q.db.QueryRow(ctx, createFriend, arg.AID, arg.BID, arg.BRole)
+	row := q.db.QueryRowContext(ctx, createFriend, arg.AID, arg.BID, arg.BRole)
 	var i Friend
 	err := row.Scan(
 		&i.ID,
@@ -373,16 +392,16 @@ func (q *Queries) CreateFriend(ctx context.Context, arg CreateFriendParams) (Fri
 }
 
 const createKidParent = `-- name: CreateKidParent :one
-insert into kids_parents(kid_id, parent_id) values($1, $2) returning id, created_at, kid_id, parent_id
+insert into kids_parents(kid_id, parent_id) values(?1, ?2) returning id, created_at, kid_id, parent_id
 `
 
 type CreateKidParentParams struct {
-	KidID    pgtype.Int8
-	ParentID pgtype.Int8
+	KidID    int64
+	ParentID int64
 }
 
 func (q *Queries) CreateKidParent(ctx context.Context, arg CreateKidParentParams) (KidsParent, error) {
-	row := q.db.QueryRow(ctx, createKidParent, arg.KidID, arg.ParentID)
+	row := q.db.QueryRowContext(ctx, createKidParent, arg.KidID, arg.ParentID)
 	var i KidsParent
 	err := row.Scan(
 		&i.ID,
@@ -394,16 +413,16 @@ func (q *Queries) CreateKidParent(ctx context.Context, arg CreateKidParentParams
 }
 
 const createNote = `-- name: CreateNote :one
-insert into notes(owner_id,body) values($1,$2) returning id, created_at, owner_id, body, published
+insert into notes(owner_id,body) values(?1,?2) returning id, created_at, owner_id, body, published
 `
 
 type CreateNoteParams struct {
-	OwnerID pgtype.Int8
-	Body    pgtype.Text
+	OwnerID int64
+	Body    string
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
-	row := q.db.QueryRow(ctx, createNote, arg.OwnerID, arg.Body)
+	row := q.db.QueryRowContext(ctx, createNote, arg.OwnerID, arg.Body)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -416,16 +435,16 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 }
 
 const createParent = `-- name: CreateParent :one
-insert into users(email, username, is_parent) values($1, $2, true) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+insert into users(email, username, is_parent) values(?1, ?2, true) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
 type CreateParentParams struct {
-	Email    pgtype.Text
-	Username pgtype.Text
+	Email    sql.NullString
+	Username string
 }
 
 func (q *Queries) CreateParent(ctx context.Context, arg CreateParentParams) (User, error) {
-	row := q.db.QueryRow(ctx, createParent, arg.Email, arg.Username)
+	row := q.db.QueryRowContext(ctx, createParent, arg.Email, arg.Username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -442,19 +461,19 @@ func (q *Queries) CreateParent(ctx context.Context, arg CreateParentParams) (Use
 }
 
 const createPostcard = `-- name: CreatePostcard :one
-insert into postcards(sender, recipient, subject, body, state) values($1,$2,$3,$4,$5) returning id, created_at, sender, recipient, subject, body, state
+insert into postcards(sender, recipient, subject, body, state) values(?1,?2,?3,?4,?5) returning id, created_at, sender, recipient, subject, body, state
 `
 
 type CreatePostcardParams struct {
-	Sender    pgtype.Int8
-	Recipient pgtype.Int8
-	Subject   pgtype.Text
-	Body      pgtype.Text
-	State     pgtype.Text
+	Sender    int64
+	Recipient int64
+	Subject   string
+	Body      string
+	State     string
 }
 
 func (q *Queries) CreatePostcard(ctx context.Context, arg CreatePostcardParams) (Postcard, error) {
-	row := q.db.QueryRow(ctx, createPostcard,
+	row := q.db.QueryRowContext(ctx, createPostcard,
 		arg.Sender,
 		arg.Recipient,
 		arg.Subject,
@@ -475,17 +494,17 @@ func (q *Queries) CreatePostcard(ctx context.Context, arg CreatePostcardParams) 
 }
 
 const createQuestion = `-- name: CreateQuestion :one
-insert into questions(quiz_id, text, answer) values($1,$2,$3) returning id, created_at, quiz_id, text, answer
+insert into questions(quiz_id, text, answer) values(?1,?2,?3) returning id, created_at, quiz_id, text, answer
 `
 
 type CreateQuestionParams struct {
-	QuizID pgtype.Int8
-	Text   pgtype.Text
-	Answer pgtype.Text
+	QuizID int64
+	Text   string
+	Answer string
 }
 
 func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error) {
-	row := q.db.QueryRow(ctx, createQuestion, arg.QuizID, arg.Text, arg.Answer)
+	row := q.db.QueryRowContext(ctx, createQuestion, arg.QuizID, arg.Text, arg.Answer)
 	var i Question
 	err := row.Scan(
 		&i.ID,
@@ -498,16 +517,16 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 }
 
 const createQuiz = `-- name: CreateQuiz :one
-insert into quizzes(name,description) values($1,$2) returning id, created_at, name, description, published
+insert into quizzes(name,description) values(?1,?2) returning id, created_at, name, description, published
 `
 
 type CreateQuizParams struct {
-	Name        pgtype.Text
-	Description pgtype.Text
+	Name        interface{}
+	Description interface{}
 }
 
 func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, error) {
-	row := q.db.QueryRow(ctx, createQuiz, arg.Name, arg.Description)
+	row := q.db.QueryRowContext(ctx, createQuiz, arg.Name, arg.Description)
 	var i Quiz
 	err := row.Scan(
 		&i.ID,
@@ -520,19 +539,19 @@ func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, e
 }
 
 const createResponse = `-- name: CreateResponse :one
-insert into responses(quiz_id, user_id, attempt_id, question_id, text) values($1,$2,$3,$4,$5) returning id, created_at, quiz_id, user_id, attempt_id, question_id, text
+insert into responses(quiz_id, user_id, attempt_id, question_id, text) values(?1,?2,?3,?4,?5) returning id, created_at, quiz_id, user_id, attempt_id, question_id, text
 `
 
 type CreateResponseParams struct {
-	QuizID     pgtype.Int8
-	UserID     pgtype.Int8
-	AttemptID  pgtype.Int8
-	QuestionID pgtype.Int8
-	Text       pgtype.Text
+	QuizID     interface{}
+	UserID     interface{}
+	AttemptID  interface{}
+	QuestionID interface{}
+	Text       interface{}
 }
 
 func (q *Queries) CreateResponse(ctx context.Context, arg CreateResponseParams) (Response, error) {
-	row := q.db.QueryRow(ctx, createResponse,
+	row := q.db.QueryRowContext(ctx, createResponse,
 		arg.QuizID,
 		arg.UserID,
 		arg.AttemptID,
@@ -553,27 +572,27 @@ func (q *Queries) CreateResponse(ctx context.Context, arg CreateResponseParams) 
 }
 
 const createRoom = `-- name: CreateRoom :one
-insert into rooms(key) values($1) returning id, created_at, key
+insert into rooms(key) values(?1) returning id, created_at, "key"
 `
 
-func (q *Queries) CreateRoom(ctx context.Context, key pgtype.Text) (Room, error) {
-	row := q.db.QueryRow(ctx, createRoom, key)
+func (q *Queries) CreateRoom(ctx context.Context, key string) (Room, error) {
+	row := q.db.QueryRowContext(ctx, createRoom, key)
 	var i Room
 	err := row.Scan(&i.ID, &i.CreatedAt, &i.Key)
 	return i, err
 }
 
 const createRoomUser = `-- name: CreateRoomUser :one
-insert into room_users(room_id, user_id) values($1, $2) returning id, created_at, room_id, user_id
+insert into room_users(room_id, user_id) values(?1, ?2) returning id, created_at, room_id, user_id
 `
 
 type CreateRoomUserParams struct {
-	RoomID pgtype.Int8
-	UserID pgtype.Int8
+	RoomID int64
+	UserID int64
 }
 
 func (q *Queries) CreateRoomUser(ctx context.Context, arg CreateRoomUserParams) (RoomUser, error) {
-	row := q.db.QueryRow(ctx, createRoomUser, arg.RoomID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, createRoomUser, arg.RoomID, arg.UserID)
 	var i RoomUser
 	err := row.Scan(
 		&i.ID,
@@ -585,17 +604,17 @@ func (q *Queries) CreateRoomUser(ctx context.Context, arg CreateRoomUserParams) 
 }
 
 const createThread = `-- name: CreateThread :one
-insert into threads(user_id, thread_id, assistant_id) values($1,$2,$3) returning id, created_at, thread_id, assistant_id, user_id
+insert into threads(user_id, thread_id, assistant_id) values(?1,?2,?3) returning id, created_at, thread_id, assistant_id, user_id
 `
 
 type CreateThreadParams struct {
-	UserID      pgtype.Int8
-	ThreadID    pgtype.Text
-	AssistantID pgtype.Text
+	UserID      int64
+	ThreadID    string
+	AssistantID string
 }
 
 func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
-	row := q.db.QueryRow(ctx, createThread, arg.UserID, arg.ThreadID, arg.AssistantID)
+	row := q.db.QueryRowContext(ctx, createThread, arg.UserID, arg.ThreadID, arg.AssistantID)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
@@ -608,11 +627,11 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thr
 }
 
 const createUser = `-- name: CreateUser :one
-insert into users(username) values($1) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+insert into users(username) values(?1) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
-func (q *Queries) CreateUser(ctx context.Context, username pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, username)
+func (q *Queries) CreateUser(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -629,25 +648,25 @@ func (q *Queries) CreateUser(ctx context.Context, username pgtype.Text) (User, e
 }
 
 const deleteNote = `-- name: DeleteNote :exec
-delete from notes where id = $1 and owner_id = $2
+delete from notes where id = ?1 and owner_id = ?2
 `
 
 type DeleteNoteParams struct {
 	ID      int64
-	OwnerID pgtype.Int8
+	OwnerID int64
 }
 
 func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) error {
-	_, err := q.db.Exec(ctx, deleteNote, arg.ID, arg.OwnerID)
+	_, err := q.db.ExecContext(ctx, deleteNote, arg.ID, arg.OwnerID)
 	return err
 }
 
 const delivery = `-- name: Delivery :one
-select id, created_at, message_id, room_id, recipient_id, sender_id, sent_at from deliveries where id = $1
+select id, created_at, message_id, room_id, recipient_id, sender_id, sent_at from deliveries where id = ?1
 `
 
 func (q *Queries) Delivery(ctx context.Context, id int64) (Delivery, error) {
-	row := q.db.QueryRow(ctx, delivery, id)
+	row := q.db.QueryRowContext(ctx, delivery, id)
 	var i Delivery
 	err := row.Scan(
 		&i.ID,
@@ -662,11 +681,11 @@ func (q *Queries) Delivery(ctx context.Context, id int64) (Delivery, error) {
 }
 
 const getAttemptByID = `-- name: GetAttemptByID :one
-select id, created_at, quiz_id, user_id from attempts where id = $1
+select id, created_at, quiz_id, user_id from attempts where id = ?1
 `
 
 func (q *Queries) GetAttemptByID(ctx context.Context, id int64) (Attempt, error) {
-	row := q.db.QueryRow(ctx, getAttemptByID, id)
+	row := q.db.QueryRowContext(ctx, getAttemptByID, id)
 	var i Attempt
 	err := row.Scan(
 		&i.ID,
@@ -680,41 +699,41 @@ func (q *Queries) GetAttemptByID(ctx context.Context, id int64) (Attempt, error)
 const getConnection = `-- name: GetConnection :one
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin,
        case
-           when f1.a_id = $1 then f1.b_role
+           when f1.a_id = ?1 then f1.b_role
            else ''
        end as role_out,
        case
-           when f2.b_id = $1 then f2.b_role
+           when f2.b_id = ?1 then f2.b_role
            else ''
        end as role_in
 from users u
-left join friends f1 on f1.b_id = u.id and f1.a_id = $1
-left join friends f2 on f2.a_id = u.id and f2.b_id = $1
+left join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+left join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 where
-  u.id = $2
+  u.id = ?2
 `
 
 type GetConnectionParams struct {
-	AID pgtype.Int8
+	AID int64
 	ID  int64
 }
 
 type GetConnectionRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	RoleOut      string
 	RoleIn       string
 }
 
 func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error) {
-	row := q.db.QueryRow(ctx, getConnection, arg.AID, arg.ID)
+	row := q.db.QueryRowContext(ctx, getConnection, arg.AID, arg.ID)
 	var i GetConnectionRow
 	err := row.Scan(
 		&i.ID,
@@ -734,13 +753,13 @@ func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (G
 
 const getConnections = `-- name: GetConnections :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1
-join friends f2 on f2.a_id = u.id and f2.b_id = $1
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 where f1.b_role <> '' and f2.b_role <> ''
 `
 
-func (q *Queries) GetConnections(ctx context.Context, aID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, getConnections, aID)
+func (q *Queries) GetConnections(ctx context.Context, aID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getConnections, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -763,45 +782,48 @@ func (q *Queries) GetConnections(ctx context.Context, aID pgtype.Int8) ([]User, 
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
 }
 
-const getConnectionsWithGradient = `-- name: GetConnectionsWithGradient :many
+const getConnectionsWithGradientDeprecated = `-- name: GetConnectionsWithGradientDeprecated :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, g.gradient, max(g.created_at)
 from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1
-join friends f2 on f2.a_id = u.id and f2.b_id = $1
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 left outer join gradients g
 on g.user_id = f1.b_id
 group by u.id
 `
 
-type GetConnectionsWithGradientRow struct {
+type GetConnectionsWithGradientDeprecatedRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	Gradient     gradient.Gradient
 	Max          interface{}
 }
 
-func (q *Queries) GetConnectionsWithGradient(ctx context.Context, aID pgtype.Int8) ([]GetConnectionsWithGradientRow, error) {
-	rows, err := q.db.Query(ctx, getConnectionsWithGradient, aID)
+func (q *Queries) GetConnectionsWithGradientDeprecated(ctx context.Context, aID int64) ([]GetConnectionsWithGradientDeprecatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, getConnectionsWithGradientDeprecated, aID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetConnectionsWithGradientRow
+	var items []GetConnectionsWithGradientDeprecatedRow
 	for rows.Next() {
-		var i GetConnectionsWithGradientRow
+		var i GetConnectionsWithGradientDeprecatedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -819,6 +841,9 @@ func (q *Queries) GetConnectionsWithGradient(ctx context.Context, aID pgtype.Int
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -828,18 +853,18 @@ func (q *Queries) GetConnectionsWithGradient(ctx context.Context, aID pgtype.Int
 const getCurrentAndPotentialParentConnections = `-- name: GetCurrentAndPotentialParentConnections :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin,
        case
-           when f1.a_id = $1 then f1.b_role
+           when f1.a_id = ?1 then f1.b_role
            else ''
        end as role_out,
        case
-           when f2.b_id = $1 then f2.b_role
+           when f2.b_id = ?1 then f2.b_role
            else ''
        end as role_in
 from users u
-left join friends f1 on f1.b_id = u.id and f1.a_id = $1
-left join friends f2 on f2.a_id = u.id and f2.b_id = $1
+left join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+left join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 where
-  u.id != $1
+  u.id != ?1
 and
   is_parent = 1
 order by role_in desc
@@ -848,20 +873,20 @@ limit 128
 
 type GetCurrentAndPotentialParentConnectionsRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	RoleOut      string
 	RoleIn       string
 }
 
-func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, aID pgtype.Int8) ([]GetCurrentAndPotentialParentConnectionsRow, error) {
-	rows, err := q.db.Query(ctx, getCurrentAndPotentialParentConnections, aID)
+func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, aID int64) ([]GetCurrentAndPotentialParentConnectionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCurrentAndPotentialParentConnections, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -886,6 +911,9 @@ func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, a
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -895,8 +923,8 @@ func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, a
 const getFamilyWithGradient = `-- name: GetFamilyWithGradient :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, g.gradient, max(g.created_at)
 from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1
-join friends f2 on f2.a_id = u.id and f2.b_id = $1
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 left outer join gradients g
 on g.user_id = f1.b_id
 where f1.b_role <> 'friend'
@@ -905,20 +933,20 @@ group by u.id
 
 type GetFamilyWithGradientRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	Gradient     gradient.Gradient
 	Max          interface{}
 }
 
-func (q *Queries) GetFamilyWithGradient(ctx context.Context, aID pgtype.Int8) ([]GetFamilyWithGradientRow, error) {
-	rows, err := q.db.Query(ctx, getFamilyWithGradient, aID)
+func (q *Queries) GetFamilyWithGradient(ctx context.Context, aID int64) ([]GetFamilyWithGradientRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFamilyWithGradient, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -943,6 +971,9 @@ func (q *Queries) GetFamilyWithGradient(ctx context.Context, aID pgtype.Int8) ([
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -951,12 +982,12 @@ func (q *Queries) GetFamilyWithGradient(ctx context.Context, aID pgtype.Int8) ([
 
 const getFriends = `-- name: GetFriends :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'friend'
-join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'friend'
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1 and f1.b_role = 'friend'
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1 and f2.b_role = 'friend'
 `
 
-func (q *Queries) GetFriends(ctx context.Context, aID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, getFriends, aID)
+func (q *Queries) GetFriends(ctx context.Context, aID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getFriends, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -979,6 +1010,9 @@ func (q *Queries) GetFriends(ctx context.Context, aID pgtype.Int8) ([]User, erro
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -988,8 +1022,8 @@ func (q *Queries) GetFriends(ctx context.Context, aID pgtype.Int8) ([]User, erro
 const getFriendsWithGradient = `-- name: GetFriendsWithGradient :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, g.gradient, max(g.created_at)
 from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1
-join friends f2 on f2.a_id = u.id and f2.b_id = $1
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 left outer join gradients g
 on g.user_id = f1.b_id
 where f1.b_role = 'friend'
@@ -998,20 +1032,20 @@ group by u.id
 
 type GetFriendsWithGradientRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	Gradient     gradient.Gradient
 	Max          interface{}
 }
 
-func (q *Queries) GetFriendsWithGradient(ctx context.Context, aID pgtype.Int8) ([]GetFriendsWithGradientRow, error) {
-	rows, err := q.db.Query(ctx, getFriendsWithGradient, aID)
+func (q *Queries) GetFriendsWithGradient(ctx context.Context, aID int64) ([]GetFriendsWithGradientRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFriendsWithGradient, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -1036,6 +1070,9 @@ func (q *Queries) GetFriendsWithGradient(ctx context.Context, aID pgtype.Int8) (
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1044,12 +1081,12 @@ func (q *Queries) GetFriendsWithGradient(ctx context.Context, aID pgtype.Int8) (
 
 const getKids = `-- name: GetKids :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'child'
-join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'parent'
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1 and f1.b_role = 'child'
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1 and f2.b_role = 'parent'
 `
 
-func (q *Queries) GetKids(ctx context.Context, aID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, getKids, aID)
+func (q *Queries) GetKids(ctx context.Context, aID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getKids, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -1071,6 +1108,9 @@ func (q *Queries) GetKids(ctx context.Context, aID pgtype.Int8) ([]User, error) 
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1080,12 +1120,12 @@ func (q *Queries) GetKids(ctx context.Context, aID pgtype.Int8) ([]User, error) 
 
 const getParents = `-- name: GetParents :many
 select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'parent'
-join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'child'
+join friends f1 on f1.b_id = u.id and f1.a_id = ?1 and f1.b_role = 'parent'
+join friends f2 on f2.a_id = u.id and f2.b_id = ?1 and f2.b_role = 'child'
 `
 
-func (q *Queries) GetParents(ctx context.Context, aID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, getParents, aID)
+func (q *Queries) GetParents(ctx context.Context, aID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getParents, aID)
 	if err != nil {
 		return nil, err
 	}
@@ -1107,6 +1147,9 @@ func (q *Queries) GetParents(ctx context.Context, aID pgtype.Int8) ([]User, erro
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1115,11 +1158,11 @@ func (q *Queries) GetParents(ctx context.Context, aID pgtype.Int8) ([]User, erro
 }
 
 const kidsByParentID = `-- name: KidsByParentID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = $1 order by kids_parents.created_at desc
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = ?1 order by kids_parents.created_at desc
 `
 
-func (q *Queries) KidsByParentID(ctx context.Context, parentID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, kidsByParentID, parentID)
+func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, kidsByParentID, parentID)
 	if err != nil {
 		return nil, err
 	}
@@ -1142,6 +1185,9 @@ func (q *Queries) KidsByParentID(ctx context.Context, parentID pgtype.Int8) ([]U
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1149,11 +1195,11 @@ func (q *Queries) KidsByParentID(ctx context.Context, parentID pgtype.Int8) ([]U
 }
 
 const messageByID = `-- name: MessageByID :one
-select id, created_at, sender_id, room_id, body from messages where id = $1
+select id, created_at, sender_id, room_id, body from messages where id = ?1
 `
 
 func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
-	row := q.db.QueryRow(ctx, messageByID, id)
+	row := q.db.QueryRowContext(ctx, messageByID, id)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -1166,11 +1212,11 @@ func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
 }
 
 const parentByID = `-- name: ParentByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = $1 and is_parent = true
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ?1 and is_parent = true
 `
 
 func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, parentByID, id)
+	row := q.db.QueryRowContext(ctx, parentByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1187,11 +1233,11 @@ func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
 }
 
 const parentsByKidID = `-- name: ParentsByKidID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = $1
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = ?1
 `
 
-func (q *Queries) ParentsByKidID(ctx context.Context, kidID pgtype.Int8) ([]User, error) {
-	rows, err := q.db.Query(ctx, parentsByKidID, kidID)
+func (q *Queries) ParentsByKidID(ctx context.Context, kidID int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, parentsByKidID, kidID)
 	if err != nil {
 		return nil, err
 	}
@@ -1214,6 +1260,9 @@ func (q *Queries) ParentsByKidID(ctx context.Context, kidID pgtype.Int8) ([]User
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1225,7 +1274,7 @@ select id, created_at, owner_id, assistant_id, name, description, published from
 `
 
 func (q *Queries) PublishedBots(ctx context.Context) ([]Bot, error) {
-	rows, err := q.db.Query(ctx, publishedBots)
+	rows, err := q.db.QueryContext(ctx, publishedBots)
 	if err != nil {
 		return nil, err
 	}
@@ -1246,6 +1295,9 @@ func (q *Queries) PublishedBots(ctx context.Context) ([]Bot, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1257,7 +1309,7 @@ select id, created_at, owner_id, body, published from notes where published = 1
 `
 
 func (q *Queries) PublishedNotes(ctx context.Context) ([]Note, error) {
-	rows, err := q.db.Query(ctx, publishedNotes)
+	rows, err := q.db.QueryContext(ctx, publishedNotes)
 	if err != nil {
 		return nil, err
 	}
@@ -1276,6 +1328,9 @@ func (q *Queries) PublishedNotes(ctx context.Context) ([]Note, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1287,7 +1342,7 @@ select id, created_at, name, description, published from quizzes where published
 `
 
 func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
-	rows, err := q.db.Query(ctx, publishedQuizzes)
+	rows, err := q.db.QueryContext(ctx, publishedQuizzes)
 	if err != nil {
 		return nil, err
 	}
@@ -1306,6 +1361,9 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1313,11 +1371,11 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const question = `-- name: Question :one
-select id, created_at, quiz_id, text, answer from questions where id = $1
+select id, created_at, quiz_id, text, answer from questions where id = ?1
 `
 
 func (q *Queries) Question(ctx context.Context, id int64) (Question, error) {
-	row := q.db.QueryRow(ctx, question, id)
+	row := q.db.QueryRowContext(ctx, question, id)
 	var i Question
 	err := row.Scan(
 		&i.ID,
@@ -1330,22 +1388,22 @@ func (q *Queries) Question(ctx context.Context, id int64) (Question, error) {
 }
 
 const questionCount = `-- name: QuestionCount :one
-select count(*) from questions where quiz_id = $1
+select count(*) from questions where quiz_id = ?1
 `
 
-func (q *Queries) QuestionCount(ctx context.Context, quizID pgtype.Int8) (int64, error) {
-	row := q.db.QueryRow(ctx, questionCount, quizID)
+func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, questionCount, quizID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const quiz = `-- name: Quiz :one
-select id, created_at, name, description, published from quizzes where id = $1
+select id, created_at, name, description, published from quizzes where id = ?1
 `
 
 func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
-	row := q.db.QueryRow(ctx, quiz, id)
+	row := q.db.QueryRowContext(ctx, quiz, id)
 	var i Quiz
 	err := row.Scan(
 		&i.ID,
@@ -1358,11 +1416,11 @@ func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
 }
 
 const quizQuestions = `-- name: QuizQuestions :many
-select id, created_at, quiz_id, text, answer from questions where quiz_id = $1
+select id, created_at, quiz_id, text, answer from questions where quiz_id = ?1
 `
 
-func (q *Queries) QuizQuestions(ctx context.Context, quizID pgtype.Int8) ([]Question, error) {
-	rows, err := q.db.Query(ctx, quizQuestions, quizID)
+func (q *Queries) QuizQuestions(ctx context.Context, quizID int64) ([]Question, error) {
+	rows, err := q.db.QueryContext(ctx, quizQuestions, quizID)
 	if err != nil {
 		return nil, err
 	}
@@ -1381,6 +1439,9 @@ func (q *Queries) QuizQuestions(ctx context.Context, quizID pgtype.Int8) ([]Ques
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1392,7 +1453,7 @@ select id, created_at, sender_id, room_id, body, sender_avatar_url from (
   select m.id, m.created_at, m.sender_id, m.room_id, m.body, sender.avatar_url as sender_avatar_url
    from messages m
    join users sender on m.sender_id = sender.id
-   where m.room_id = $1
+   where m.room_id = ?1
    order by m.created_at desc
    limit 128
   ) t
@@ -1401,15 +1462,15 @@ order by created_at asc
 
 type RecentRoomMessagesRow struct {
 	ID              int64
-	CreatedAt       pgtype.Timestamptz
-	SenderID        pgtype.Int8
-	RoomID          pgtype.Int8
-	Body            pgtype.Text
-	SenderAvatarURL pgtype.Text
+	CreatedAt       time.Time
+	SenderID        int64
+	RoomID          string
+	Body            string
+	SenderAvatarURL string
 }
 
-func (q *Queries) RecentRoomMessages(ctx context.Context, roomID pgtype.Int8) ([]RecentRoomMessagesRow, error) {
-	rows, err := q.db.Query(ctx, recentRoomMessages, roomID)
+func (q *Queries) RecentRoomMessages(ctx context.Context, roomID string) ([]RecentRoomMessagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, recentRoomMessages, roomID)
 	if err != nil {
 		return nil, err
 	}
@@ -1429,6 +1490,9 @@ func (q *Queries) RecentRoomMessages(ctx context.Context, roomID pgtype.Int8) ([
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1436,11 +1500,11 @@ func (q *Queries) RecentRoomMessages(ctx context.Context, roomID pgtype.Int8) ([
 }
 
 const responseCount = `-- name: ResponseCount :one
-select count(*) from responses where attempt_id = $1
+select count(*) from responses where attempt_id = ?1
 `
 
-func (q *Queries) ResponseCount(ctx context.Context, attemptID pgtype.Int8) (int64, error) {
-	row := q.db.QueryRow(ctx, responseCount, attemptID)
+func (q *Queries) ResponseCount(ctx context.Context, attemptID interface{}) (int64, error) {
+	row := q.db.QueryRowContext(ctx, responseCount, attemptID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1454,25 +1518,25 @@ select
    questions.answer = responses.text is_correct
 from responses
  join questions on responses.question_id = questions.id
- where attempt_id = $1
+ where attempt_id = ?1
 order by responses.created_at
 `
 
 type ResponsesRow struct {
 	ID             int64
-	CreatedAt      pgtype.Timestamptz
-	QuizID         pgtype.Int8
-	UserID         pgtype.Int8
-	AttemptID      pgtype.Int8
-	QuestionID     pgtype.Int8
-	Text           pgtype.Text
-	QuestionAnswer pgtype.Text
-	QuestionText   pgtype.Text
+	CreatedAt      time.Time
+	QuizID         interface{}
+	UserID         interface{}
+	AttemptID      interface{}
+	QuestionID     interface{}
+	Text           interface{}
+	QuestionAnswer string
+	QuestionText   string
 	IsCorrect      bool
 }
 
-func (q *Queries) Responses(ctx context.Context, attemptID pgtype.Int8) ([]ResponsesRow, error) {
-	rows, err := q.db.Query(ctx, responses, attemptID)
+func (q *Queries) Responses(ctx context.Context, attemptID interface{}) ([]ResponsesRow, error) {
+	rows, err := q.db.QueryContext(ctx, responses, attemptID)
 	if err != nil {
 		return nil, err
 	}
@@ -1496,6 +1560,9 @@ func (q *Queries) Responses(ctx context.Context, attemptID pgtype.Int8) ([]Respo
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1503,27 +1570,27 @@ func (q *Queries) Responses(ctx context.Context, attemptID pgtype.Int8) ([]Respo
 }
 
 const roomByKey = `-- name: RoomByKey :one
-select id, created_at, key from rooms where key = $1
+select id, created_at, "key" from rooms where key = ?1
 `
 
-func (q *Queries) RoomByKey(ctx context.Context, key pgtype.Text) (Room, error) {
-	row := q.db.QueryRow(ctx, roomByKey, key)
+func (q *Queries) RoomByKey(ctx context.Context, key string) (Room, error) {
+	row := q.db.QueryRowContext(ctx, roomByKey, key)
 	var i Room
 	err := row.Scan(&i.ID, &i.CreatedAt, &i.Key)
 	return i, err
 }
 
 const setQuizPublished = `-- name: SetQuizPublished :one
-update quizzes set published = $1 where id = $2 returning id, created_at, name, description, published
+update quizzes set published = ?1 where id = ?2 returning id, created_at, name, description, published
 `
 
 type SetQuizPublishedParams struct {
-	Published pgtype.Bool
+	Published bool
 	ID        int64
 }
 
 func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedParams) (Quiz, error) {
-	row := q.db.QueryRow(ctx, setQuizPublished, arg.Published, arg.ID)
+	row := q.db.QueryRowContext(ctx, setQuizPublished, arg.Published, arg.ID)
 	var i Quiz
 	err := row.Scan(
 		&i.ID,
@@ -1536,16 +1603,16 @@ func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedPara
 }
 
 const updateAvatar = `-- name: UpdateAvatar :one
-update users set avatar_url = $1 where id = $2 returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
+update users set avatar_url = ?1 where id = ?2 returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin
 `
 
 type UpdateAvatarParams struct {
-	AvatarURL pgtype.Text
+	AvatarURL string
 	ID        int64
 }
 
 func (q *Queries) UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateAvatar, arg.AvatarURL, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateAvatar, arg.AvatarURL, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1562,18 +1629,18 @@ func (q *Queries) UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (Use
 }
 
 const updateBotDescription = `-- name: UpdateBotDescription :one
-update bots set description = $1, name = $2 where id = $3 and owner_id = $4 returning id, created_at, owner_id, assistant_id, name, description, published
+update bots set description = ?1, name = ?2 where id = ?3 and owner_id = ?4 returning id, created_at, owner_id, assistant_id, name, description, published
 `
 
 type UpdateBotDescriptionParams struct {
-	Description pgtype.Text
-	Name        pgtype.Text
+	Description string
+	Name        string
 	ID          int64
-	OwnerID     pgtype.Int8
+	OwnerID     int64
 }
 
 func (q *Queries) UpdateBotDescription(ctx context.Context, arg UpdateBotDescriptionParams) (Bot, error) {
-	row := q.db.QueryRow(ctx, updateBotDescription,
+	row := q.db.QueryRowContext(ctx, updateBotDescription,
 		arg.Description,
 		arg.Name,
 		arg.ID,
@@ -1593,17 +1660,17 @@ func (q *Queries) UpdateBotDescription(ctx context.Context, arg UpdateBotDescrip
 }
 
 const updateNote = `-- name: UpdateNote :one
-update notes set body = $1 where id = $2 and owner_id = $3 returning id, created_at, owner_id, body, published
+update notes set body = ?1 where id = ?2 and owner_id = ?3 returning id, created_at, owner_id, body, published
 `
 
 type UpdateNoteParams struct {
-	Body    pgtype.Text
+	Body    string
 	ID      int64
-	OwnerID pgtype.Int8
+	OwnerID int64
 }
 
 func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error) {
-	row := q.db.QueryRow(ctx, updateNote, arg.Body, arg.ID, arg.OwnerID)
+	row := q.db.QueryRowContext(ctx, updateNote, arg.Body, arg.ID, arg.OwnerID)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -1616,17 +1683,17 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 }
 
 const updateQuestion = `-- name: UpdateQuestion :one
-update questions set text = $1, answer = $2 where id = $3 returning id, created_at, quiz_id, text, answer
+update questions set text = ?1, answer = ?2 where id = ?3 returning id, created_at, quiz_id, text, answer
 `
 
 type UpdateQuestionParams struct {
-	Text   pgtype.Text
-	Answer pgtype.Text
+	Text   string
+	Answer string
 	ID     int64
 }
 
 func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error) {
-	row := q.db.QueryRow(ctx, updateQuestion, arg.Text, arg.Answer, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateQuestion, arg.Text, arg.Answer, arg.ID)
 	var i Question
 	err := row.Scan(
 		&i.ID,
@@ -1639,17 +1706,17 @@ func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) 
 }
 
 const updateQuiz = `-- name: UpdateQuiz :one
-update quizzes set name = $1, description = $2 where id = $3 returning id, created_at, name, description, published
+update quizzes set name = ?1, description = ?2 where id = ?3 returning id, created_at, name, description, published
 `
 
 type UpdateQuizParams struct {
-	Name        pgtype.Text
-	Description pgtype.Text
+	Name        interface{}
+	Description interface{}
 	ID          int64
 }
 
 func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error) {
-	row := q.db.QueryRow(ctx, updateQuiz, arg.Name, arg.Description, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateQuiz, arg.Name, arg.Description, arg.ID)
 	var i Quiz
 	err := row.Scan(
 		&i.ID,
@@ -1662,11 +1729,11 @@ func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, e
 }
 
 const userByEmail = `-- name: UserByEmail :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where email = $1
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where email = ?1
 `
 
-func (q *Queries) UserByEmail(ctx context.Context, email pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, userByEmail, email)
+func (q *Queries) UserByEmail(ctx context.Context, email sql.NullString) (User, error) {
+	row := q.db.QueryRowContext(ctx, userByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1683,11 +1750,11 @@ func (q *Queries) UserByEmail(ctx context.Context, email pgtype.Text) (User, err
 }
 
 const userByID = `-- name: UserByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = $1
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where id = ?1
 `
 
 func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, userByID, id)
+	row := q.db.QueryRowContext(ctx, userByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1704,11 +1771,11 @@ func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const userBySessionKey = `-- name: UserBySessionKey :one
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from sessions join users on sessions.user_id = users.id where sessions.key = $1
+select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin from sessions join users on sessions.user_id = users.id where sessions.key = ?1
 `
 
-func (q *Queries) UserBySessionKey(ctx context.Context, key pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, userBySessionKey, key)
+func (q *Queries) UserBySessionKey(ctx context.Context, key interface{}) (User, error) {
+	row := q.db.QueryRowContext(ctx, userBySessionKey, key)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1725,11 +1792,11 @@ func (q *Queries) UserBySessionKey(ctx context.Context, key pgtype.Text) (User, 
 }
 
 const userByUsername = `-- name: UserByUsername :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where username = $1
+select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin from users where username = ?1
 `
 
-func (q *Queries) UserByUsername(ctx context.Context, username pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, userByUsername, username)
+func (q *Queries) UserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, userByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1746,11 +1813,11 @@ func (q *Queries) UserByUsername(ctx context.Context, username pgtype.Text) (Use
 }
 
 const userGradient = `-- name: UserGradient :one
-select id, created_at, user_id, gradient from gradients where user_id = $1 order by created_at desc limit 1
+select id, created_at, user_id, gradient from gradients where user_id = ?1 order by created_at desc limit 1
 `
 
-func (q *Queries) UserGradient(ctx context.Context, userID pgtype.Int8) (Gradient, error) {
-	row := q.db.QueryRow(ctx, userGradient, userID)
+func (q *Queries) UserGradient(ctx context.Context, userID int64) (Gradient, error) {
+	row := q.db.QueryRowContext(ctx, userGradient, userID)
 	var i Gradient
 	err := row.Scan(
 		&i.ID,
@@ -1762,11 +1829,11 @@ func (q *Queries) UserGradient(ctx context.Context, userID pgtype.Int8) (Gradien
 }
 
 const userNotes = `-- name: UserNotes :many
-select id, created_at, owner_id, body, published from notes where owner_id = $1 order by created_at desc
+select id, created_at, owner_id, body, published from notes where owner_id = ?1 order by created_at desc
 `
 
-func (q *Queries) UserNotes(ctx context.Context, ownerID pgtype.Int8) ([]Note, error) {
-	rows, err := q.db.Query(ctx, userNotes, ownerID)
+func (q *Queries) UserNotes(ctx context.Context, ownerID int64) ([]Note, error) {
+	rows, err := q.db.QueryContext(ctx, userNotes, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -1785,6 +1852,9 @@ func (q *Queries) UserNotes(ctx context.Context, ownerID pgtype.Int8) ([]Note, e
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1795,24 +1865,24 @@ const userPostcardsReceived = `-- name: UserPostcardsReceived :many
 select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, s.username, s.avatar_url
 from postcards p
 join users s on p.sender = s.id
-where recipient = $1
+where recipient = ?1
 order by p.created_at desc
 `
 
 type UserPostcardsReceivedRow struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
-	Sender    pgtype.Int8
-	Recipient pgtype.Int8
-	Subject   pgtype.Text
-	Body      pgtype.Text
-	State     pgtype.Text
-	Username  pgtype.Text
-	AvatarURL pgtype.Text
+	CreatedAt time.Time
+	Sender    int64
+	Recipient int64
+	Subject   string
+	Body      string
+	State     string
+	Username  string
+	AvatarURL string
 }
 
-func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient pgtype.Int8) ([]UserPostcardsReceivedRow, error) {
-	rows, err := q.db.Query(ctx, userPostcardsReceived, recipient)
+func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient int64) ([]UserPostcardsReceivedRow, error) {
+	rows, err := q.db.QueryContext(ctx, userPostcardsReceived, recipient)
 	if err != nil {
 		return nil, err
 	}
@@ -1835,6 +1905,9 @@ func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient pgtype.In
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1845,24 +1918,24 @@ const userPostcardsSent = `-- name: UserPostcardsSent :many
 select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, r.username, r.avatar_url
 from postcards p
 join users r on p.recipient = r.id
-where sender = $1
+where sender = ?1
 order by p.created_at desc
 `
 
 type UserPostcardsSentRow struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
-	Sender    pgtype.Int8
-	Recipient pgtype.Int8
-	Subject   pgtype.Text
-	Body      pgtype.Text
-	State     pgtype.Text
-	Username  pgtype.Text
-	AvatarURL pgtype.Text
+	CreatedAt time.Time
+	Sender    int64
+	Recipient int64
+	Subject   string
+	Body      string
+	State     string
+	Username  string
+	AvatarURL string
 }
 
-func (q *Queries) UserPostcardsSent(ctx context.Context, sender pgtype.Int8) ([]UserPostcardsSentRow, error) {
-	rows, err := q.db.Query(ctx, userPostcardsSent, sender)
+func (q *Queries) UserPostcardsSent(ctx context.Context, sender int64) ([]UserPostcardsSentRow, error) {
+	rows, err := q.db.QueryContext(ctx, userPostcardsSent, sender)
 	if err != nil {
 		return nil, err
 	}
@@ -1885,6 +1958,9 @@ func (q *Queries) UserPostcardsSent(ctx context.Context, sender pgtype.Int8) ([]
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1892,16 +1968,16 @@ func (q *Queries) UserPostcardsSent(ctx context.Context, sender pgtype.Int8) ([]
 }
 
 const userThreadByID = `-- name: UserThreadByID :one
-select id, created_at, thread_id, assistant_id, user_id from threads where user_id = $1 and thread_id = $2
+select id, created_at, thread_id, assistant_id, user_id from threads where user_id = ?1 and thread_id = ?2
 `
 
 type UserThreadByIDParams struct {
-	UserID   pgtype.Int8
-	ThreadID pgtype.Text
+	UserID   int64
+	ThreadID string
 }
 
 func (q *Queries) UserThreadByID(ctx context.Context, arg UserThreadByIDParams) (Thread, error) {
-	row := q.db.QueryRow(ctx, userThreadByID, arg.UserID, arg.ThreadID)
+	row := q.db.QueryRowContext(ctx, userThreadByID, arg.UserID, arg.ThreadID)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
@@ -1914,11 +1990,11 @@ func (q *Queries) UserThreadByID(ctx context.Context, arg UserThreadByIDParams) 
 }
 
 const userVisibleBots = `-- name: UserVisibleBots :many
-select id, created_at, owner_id, assistant_id, name, description, published from bots where owner_id = $1 or published = 1
+select id, created_at, owner_id, assistant_id, name, description, published from bots where owner_id = ?1 or published = 1
 `
 
-func (q *Queries) UserVisibleBots(ctx context.Context, ownerID pgtype.Int8) ([]Bot, error) {
-	rows, err := q.db.Query(ctx, userVisibleBots, ownerID)
+func (q *Queries) UserVisibleBots(ctx context.Context, ownerID int64) ([]Bot, error) {
+	rows, err := q.db.QueryContext(ctx, userVisibleBots, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -1939,6 +2015,9 @@ func (q *Queries) UserVisibleBots(ctx context.Context, ownerID pgtype.Int8) ([]B
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -1949,25 +2028,25 @@ const usersWithUnreadCounts = `-- name: UsersWithUnreadCounts :many
 select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, count(*) unread_count
 from deliveries
 join users on sender_id = users.id
-where recipient_id = $1 and sent_at is null
-group by users.username
+where recipient_id = ?1 and sent_at is null
+group by users.id
 `
 
 type UsersWithUnreadCountsRow struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     pgtype.Text
-	Email        pgtype.Text
-	AvatarURL    pgtype.Text
-	IsParent     pgtype.Bool
-	Bio          pgtype.Text
-	BecomeUserID pgtype.Int8
-	Admin        pgtype.Bool
+	CreatedAt    time.Time
+	Username     string
+	Email        sql.NullString
+	AvatarURL    string
+	IsParent     bool
+	Bio          string
+	BecomeUserID sql.NullInt64
+	Admin        bool
 	UnreadCount  int64
 }
 
-func (q *Queries) UsersWithUnreadCounts(ctx context.Context, recipientID pgtype.Int8) ([]UsersWithUnreadCountsRow, error) {
-	rows, err := q.db.Query(ctx, usersWithUnreadCounts, recipientID)
+func (q *Queries) UsersWithUnreadCounts(ctx context.Context, recipientID int64) ([]UsersWithUnreadCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, usersWithUnreadCounts, recipientID)
 	if err != nil {
 		return nil, err
 	}
@@ -1990,6 +2069,9 @@ func (q *Queries) UsersWithUnreadCounts(ctx context.Context, recipientID pgtype.
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

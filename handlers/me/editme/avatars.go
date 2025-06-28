@@ -6,18 +6,28 @@ import (
 	"html/template"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type service struct {
+	Conn    *pgxpool.Conn
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Conn) *service {
+	return &service{Queries: q, Conn: conn}
+}
 
 //go:embed "avatars.gohtml"
 var AvatarContent string
 
 var avatarsTemplate = template.Must(template.New("avatars").Parse(AvatarContent))
 
-func GetAvatars(w http.ResponseWriter, r *http.Request) {
+func (s *service) GetAvatars(w http.ResponseWriter, r *http.Request) {
 	const count = 44
 
 	ctx := r.Context()
@@ -37,13 +47,12 @@ func GetAvatars(w http.ResponseWriter, r *http.Request) {
 	render.ExecuteNamed(w, avatarsTemplate, "avatars", struct{ URLs []string }{urls})
 }
 
-func PutAvatar(w http.ResponseWriter, r *http.Request) {
+func (s *service) PutAvatar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	user := auth.FromContext(ctx)
 	newAvatarURL := r.FormValue("URL")
 
-	user, err := queries.UpdateAvatar(ctx, api.UpdateAvatarParams{
+	user, err := s.Queries.UpdateAvatar(ctx, api.UpdateAvatarParams{
 		ID:        user.ID,
 		AvatarURL: newAvatarURL,
 	})

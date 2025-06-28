@@ -17,8 +17,8 @@ import (
 )
 
 type Resource struct {
-	DB    *sqlx.DB
-	Model *api.Queries
+	DB      *sqlx.DB
+	Queries *api.Queries
 }
 
 func (rs Resource) Routes() chi.Router {
@@ -41,7 +41,7 @@ func (rs Resource) index(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
 
-	kids, err := rs.Model.KidsByParentID(ctx, l.User.ID)
+	kids, err := rs.Queries.KidsByParentID(ctx, l.User.ID)
 	if err != nil {
 		render.Error(w, err.Error(), 500)
 		return
@@ -72,9 +72,9 @@ func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
 	}
 	username := r.PostForm.Get("username")
 
-	_, err = rs.Model.UserByUsername(ctx, username)
+	_, err = rs.Queries.UserByUsername(ctx, username)
 	if errors.Is(err, sql.ErrNoRows) {
-		kid, err := family.CreateKid(ctx, user.ID, username)
+		kid, err := family.CreateKid(ctx, rs.Queries, user.ID, username)
 		if err != nil {
 			render.Error(w, err.Error(), 500)
 			return

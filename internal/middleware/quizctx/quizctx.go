@@ -5,12 +5,19 @@ import (
 	"database/sql"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/render"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 type contextKey int
 
@@ -20,12 +27,11 @@ func Value(ctx context.Context) api.Quiz {
 	return ctx.Value(quizContextKey).(api.Quiz)
 }
 
-func Provider(next http.Handler) http.Handler {
+func (s *service) Provider(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		queries := api.New(db.DB)
 		quizID, _ := strconv.Atoi(chi.URLParam(r, "quizID"))
-		quiz, err := queries.Quiz(ctx, int64(quizID))
+		quiz, err := s.Queries.Quiz(ctx, int64(quizID))
 		if err != nil {
 			if err == sql.ErrNoRows {
 				render.NotFound(w)

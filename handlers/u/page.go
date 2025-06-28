@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/connect"
 	"oj/handlers/layout"
 	"oj/handlers/me"
@@ -23,13 +22,12 @@ var (
 	pageTemplate = layout.MustParse(pageContent, me.CardContent, connect.ConnectionContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	l := layout.FromContext(r.Context())
 
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	pageUser, err := queries.UserByID(ctx, int64(userID))
+	pageUser, err := s.Queries.UserByID(ctx, int64(userID))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			render.Error(w, "User not found", http.StatusNotFound)
@@ -44,7 +42,7 @@ func Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ug, err := background.ForUser(ctx, pageUser.ID)
+	ug, err := background.ForUser(ctx, s.Queries, pageUser.ID)
 	if err != nil {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -52,7 +50,10 @@ func Page(w http.ResponseWriter, r *http.Request) {
 	// override layout gradient to show the page user's not the request user's
 	l.BackgroundGradient = *ug
 
-	connection, err := queries.GetConnection(ctx, api.GetConnectionParams{AID: l.User.ID, ID: pageUser.ID})
+	connection, err := s.Queries.GetConnection(ctx, api.GetConnectionParams{
+		AID: l.User.ID,
+		ID:  pageUser.ID,
+	})
 	if err != nil {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return

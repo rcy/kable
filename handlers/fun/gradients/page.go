@@ -6,13 +6,24 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"oj/db"
+	"oj/api"
 	"oj/element/gradient"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"strconv"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type service struct {
+	Conn    *pgxpool.Conn
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Conn) *service {
+	return &service{Queries: q, Conn: conn}
+}
 
 var (
 	//go:embed "page.gohtml"
@@ -51,7 +62,7 @@ func Picker(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func SetBackground(w http.ResponseWriter, r *http.Request) {
+func (s *service) SetBackground(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
 
@@ -67,7 +78,7 @@ func SetBackground(w http.ResponseWriter, r *http.Request) {
 	}
 
 	encodedGradient, _ := json.Marshal(g)
-	_, err = db.DB.Exec("insert into gradients(user_id, gradient) values(?, ?)", user.ID, encodedGradient)
+	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values(?, ?)", user.ID, encodedGradient)
 	if err != nil {
 		render.Error(w, err.Error(), 500)
 		return

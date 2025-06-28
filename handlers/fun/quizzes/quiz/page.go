@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
@@ -14,25 +13,32 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
 var (
 	//go:embed page.gohtml
 	pageContent  string
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func Router(r chi.Router) {
-	r.Use(quizctx.Provider)
-	r.Get("/", page)
-	r.Post("/attempt", createAttempt)
+func (s *service) Router(r chi.Router) {
+	r.Use(quizctx.NewService(s.Queries).Provider)
+	r.Get("/", s.page)
+	r.Post("/attempt", s.createAttempt)
 }
 
-func page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	l := layout.FromContext(ctx)
 	quiz := quizctx.Value(ctx)
 
-	questions, err := queries.QuizQuestions(ctx, quiz.ID)
+	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
 	if err != nil {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -55,13 +61,12 @@ func page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func createAttempt(w http.ResponseWriter, r *http.Request) {
+func (s *service) createAttempt(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
 	quiz := quizctx.Value(ctx)
 
-	queries := api.New(db.DB)
-	attempt, err := queries.CreateAttempt(ctx, api.CreateAttemptParams{
+	attempt, err := s.Queries.CreateAttempt(ctx, api.CreateAttemptParams{
 		QuizID: quiz.ID,
 		UserID: user.ID,
 	})

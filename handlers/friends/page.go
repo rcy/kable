@@ -4,11 +4,18 @@ import (
 	_ "embed"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/me"
 	"oj/handlers/render"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 var (
 	//go:embed "page.gohtml"
@@ -17,12 +24,11 @@ var (
 	MyPageTemplate = layout.MustParse(pageContent, me.CardContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
-	queries := api.New(db.DB)
 
-	friends, err := queries.GetFriendsWithGradient(ctx, l.User.ID)
+	friends, err := s.Queries.GetFriendsWithGradient(ctx, l.User.ID)
 	if err != nil {
 		render.Error(w, err.Error(), http.StatusInternalServerError)
 		return

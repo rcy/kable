@@ -3,9 +3,9 @@ module oj
 go 1.24.3
 
 require (
-	github.com/BurntSushi/migration v0.0.0-20140125045755-c45b897f1335
 	github.com/acaloiaro/neoq v0.19.0
 	github.com/alexandrevicenzi/go-sse v1.6.0
+	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/jackc/pgx/v5 v5.7.4
@@ -19,7 +19,6 @@ require (
 	github.com/sashabaranov/go-openai v1.40.3
 	github.com/yuin/goldmark v1.4.13
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	modernc.org/sqlite v1.37.0
 	mvdan.cc/xurls/v2 v2.5.0
 )
 
@@ -90,6 +89,7 @@ require (
 	modernc.org/libc v1.62.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.9.1 // indirect
+	modernc.org/sqlite v1.37.0 // indirect
 )
 
 tool github.com/sqlc-dev/sqlc/cmd/sqlc
