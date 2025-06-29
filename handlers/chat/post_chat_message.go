@@ -22,7 +22,7 @@ func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 	user := auth.FromContext(ctx)
 	roomID, err := strconv.Atoi(r.FormValue("roomID"))
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("Atoi: %w", err), 500)
 		return
 	}
 	body := r.FormValue("body")
@@ -30,7 +30,7 @@ func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(body) != "" {
 		err = rs.postMessage(r.Context(), int64(roomID), user.ID, body)
 		if err != nil {
-			render.Error(w, err.Error(), 500)
+			render.Error(w, fmt.Errorf("postMessage: %w", err), 500)
 			return
 		}
 	}

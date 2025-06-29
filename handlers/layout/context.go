@@ -2,6 +2,7 @@ package layout
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/render"
@@ -41,7 +42,7 @@ func (s *service) Provider(next http.Handler) http.Handler {
 		user := auth.FromContext(ctx)
 		data, err := s.FromUser(ctx, user)
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("s.FromUser: %w", err), http.StatusInternalServerError)
 			return
 		}
 		ctx = NewContext(ctx, data)

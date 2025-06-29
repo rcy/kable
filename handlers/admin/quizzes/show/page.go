@@ -3,6 +3,7 @@ package show
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -46,7 +47,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
 	if err != nil && err != sql.ErrNoRows {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("QuizQuestions: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -77,7 +78,7 @@ func (s *service) patchQuiz(w http.ResponseWriter, r *http.Request) {
 		Description: r.FormValue("description"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateQuiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (s *service) togglePublished(w http.ResponseWriter, r *http.Request) {
 		Published: !quiz.Published,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("SetQuizPublished: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.ExecuteNamed(w, pageTemplate, "quiz-header", quiz)
@@ -112,7 +113,7 @@ func (s *service) editQuestion(w http.ResponseWriter, r *http.Request) {
 
 	quest, err := s.Queries.Question(ctx, int64(questionID))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Question: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -131,7 +132,7 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 		questionID, _ := strconv.Atoi(r.FormValue("id"))
 		_, err = s.Queries.Question(ctx, int64(questionID))
 		if err != nil && err != sql.ErrNoRows {
-			render.Error(w, err.Error(), http.StatusNotFound)
+			render.Error(w, fmt.Errorf("Question: %w", err), http.StatusNotFound)
 			return
 		}
 		quest, err = s.Queries.UpdateQuestion(r.Context(), api.UpdateQuestionParams{
@@ -139,18 +140,20 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 			Text:   r.FormValue("text"),
 			Answer: r.FormValue("answer"),
 		})
+		if err != nil {
+			render.Error(w, fmt.Errorf("UpdateQuestion", err), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		quest, err = s.Queries.CreateQuestion(r.Context(), api.CreateQuestionParams{
 			QuizID: quiz.ID,
 			Text:   r.FormValue("text"),
 			Answer: r.FormValue("answer"),
 		})
-
-	}
-
-	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if err != nil {
+			render.Error(w, fmt.Errorf("CreateQuestion", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	render.ExecuteNamed(w, pageTemplate, "question", quest)
@@ -162,7 +165,7 @@ func (s *service) patchQuestion(w http.ResponseWriter, r *http.Request) {
 	questionID, _ := strconv.Atoi(chi.URLParam(r, "questionID"))
 	quest, err := s.Queries.Question(ctx, int64(questionID))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusNotFound)
+		render.Error(w, fmt.Errorf("Question: %w", err), http.StatusNotFound)
 		return
 	}
 
@@ -172,7 +175,7 @@ func (s *service) patchQuestion(w http.ResponseWriter, r *http.Request) {
 		Answer: r.FormValue("answer"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateQuestion: %w", err), http.StatusInternalServerError)
 		return
 	}
 

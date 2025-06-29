@@ -2,6 +2,7 @@ package connect
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -39,7 +40,7 @@ func (s *service) Connect(w http.ResponseWriter, r *http.Request) {
 
 	connections, err := s.Queries.GetCurrentAndPotentialParentConnections(r.Context(), lay.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetCurrentAndPotentialParentConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (s *service) DeleteParentFriend(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.Conn.Exec(ctx, `delete from friends where a_id = $1 and b_id = $2`, currentUser.ID, user.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("delete from friends: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -107,7 +108,7 @@ func (s *service) DeleteParentFriend(w http.ResponseWriter, r *http.Request) {
 		ID:  int64(user.ID)},
 	)
 	if err != nil {
-		render.Error(w, "xxx"+err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnection: %w", err), http.StatusInternalServerError)
 		return
 	}
 

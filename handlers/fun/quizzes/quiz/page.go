@@ -2,6 +2,7 @@ package quiz
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"oj/api"
@@ -40,11 +41,11 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("QuizQuestions: %w", err), http.StatusInternalServerError)
 		return
 	}
 	if len(questions) == 0 {
-		render.Error(w, "quiz has no questions", http.StatusInternalServerError)
+		render.Error(w, errors.New("quiz has no questions"), http.StatusInternalServerError)
 		return
 	}
 
@@ -71,7 +72,7 @@ func (s *service) createAttempt(w http.ResponseWriter, r *http.Request) {
 		UserID: user.ID,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateAttempt: %w", err), http.StatusInternalServerError)
 		return
 	}
 

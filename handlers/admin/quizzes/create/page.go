@@ -48,7 +48,7 @@ func (s *service) post(w http.ResponseWriter, r *http.Request) {
 		Description: r.FormValue("description"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateQuiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 

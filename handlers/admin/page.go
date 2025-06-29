@@ -2,6 +2,7 @@ package admin
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/element/gradient"
@@ -49,7 +50,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	allUsers, err := s.Queries.AllUsers(ctx)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AllUsers: %w", err), http.StatusInternalServerError)
 		return
 	}
 

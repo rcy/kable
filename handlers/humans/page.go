@@ -2,6 +2,7 @@ package humans
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -30,7 +31,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	friends, err := s.Queries.GetConnections(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
 

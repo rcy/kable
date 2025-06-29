@@ -2,6 +2,7 @@ package become
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/render"
@@ -23,10 +24,10 @@ func (s *service) Provider(next http.Handler) http.Handler {
 		becomeUser, err := s.getUser(ctx)
 		if err != nil {
 			if err == auth.ErrNotAuthorized {
-				render.Error(w, "getUser:"+err.Error(), http.StatusUnauthorized)
+				render.Error(w, fmt.Errorf("getUser: %w", err), http.StatusUnauthorized)
 				return
 			}
-			render.Error(w, "getUser:"+err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("getUser: %w", err), http.StatusInternalServerError)
 			return
 		}
 

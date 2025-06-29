@@ -2,6 +2,7 @@ package postoffice
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -41,13 +42,13 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	received, err := s.Queries.UserPostcardsReceived(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserPostcardsReceived: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	sent, err := s.Queries.UserPostcardsSent(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserPostcardsSent: %w", err), http.StatusInternalServerError)
 		return
 	}
 

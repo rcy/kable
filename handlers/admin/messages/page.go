@@ -2,6 +2,7 @@ package messages
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -37,7 +38,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	messages, err := s.Queries.AdminRecentMessages(ctx)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AdminRecentMessages: %w", err), http.StatusInternalServerError)
 		return
 	}
 

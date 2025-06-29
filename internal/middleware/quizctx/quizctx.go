@@ -3,6 +3,7 @@ package quizctx
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/render"
@@ -37,7 +38,7 @@ func (s *service) Provider(next http.Handler) http.Handler {
 				render.NotFound(w)
 				return
 			}
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusInternalServerError)
 			return
 		}
 		ctx = context.WithValue(ctx, quizContextKey, quiz)

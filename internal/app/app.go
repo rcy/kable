@@ -113,7 +113,7 @@ func (rs Service) Routes() chi.Router {
 	r.Route("/u/{userID}", u.NewService(rs.Queries).Router)
 
 	r.Group(func(r chi.Router) {
-		s := chat.NewService(rs.Queries)
+		s := chat.NewService(rs.Queries, rs.Conn)
 		r.Get("/u/{userID}/chat", s.Page)
 		r.Post("/chat/messages", s.PostChatMessage)
 	})

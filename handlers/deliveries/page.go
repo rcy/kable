@@ -37,9 +37,9 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	delivery, err := s.Queries.Delivery(ctx, int64(deliveryID))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			render.Error(w, err.Error(), http.StatusNotFound)
+			render.Error(w, fmt.Errorf("Delivery not found: %w", err), http.StatusNotFound)
 		} else {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -70,16 +70,16 @@ func (s *service) Logout(w http.ResponseWriter, r *http.Request) {
 	delivery, err := s.Queries.Delivery(ctx, int64(deliveryID))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			render.Error(w, err.Error(), http.StatusNotFound)
+			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusNotFound)
 		} else {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusInternalServerError)
 		}
 		return
 	}
 
 	_, err = s.Conn.Exec(ctx, `delete from sessions where user_id = ?`, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("delete from sessions: %w", err), http.StatusInternalServerError)
 		return
 	}
 

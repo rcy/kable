@@ -2,6 +2,7 @@ package editme
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -35,9 +36,9 @@ func (s *service) Post(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	bio := r.FormValue("bio")
 
-	_, err := s.Conn.Exec(ctx, "update users set username=?, bio=? where id=?", username, bio, user.ID)
+	_, err := s.Conn.Exec(ctx, "update users set username=$1, bio=$2 where id=$3", username, bio, user.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("update users: %w", err), http.StatusInternalServerError)
 		return
 	}
 

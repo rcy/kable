@@ -3,6 +3,7 @@ package u
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/connect"
@@ -30,10 +31,10 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	pageUser, err := s.Queries.UserByID(ctx, int64(userID))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			render.Error(w, "User not found", http.StatusNotFound)
+			render.Error(w, fmt.Errorf("UserByID: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserByID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -44,7 +45,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	ug, err := background.ForUser(ctx, s.Queries, pageUser.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("ForUser: %w", err), http.StatusInternalServerError)
 		return
 	}
 	// override layout gradient to show the page user's not the request user's
@@ -55,7 +56,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		ID:  pageUser.ID,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnection: %w", err), http.StatusInternalServerError)
 		return
 	}
 

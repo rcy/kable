@@ -3,6 +3,7 @@ package completed
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -34,32 +35,32 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			render.Error(w, "attempt not found", http.StatusNotFound)
+			render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusNotFound)
 		return
 	}
 
 	quiz, err := s.Queries.Quiz(ctx, attempt.QuizID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			render.Error(w, "attempt not found", http.StatusNotFound)
+			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	questionCount, err := s.Queries.QuestionCount(ctx, quiz.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("QuestionCount: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	responses, err := s.Queries.Responses(ctx, attempt.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Responses: %w", err), http.StatusInternalServerError)
 		return
 	}
 

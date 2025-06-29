@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/render"
@@ -23,7 +24,7 @@ func (rs Resource) provideBot(next http.Handler) http.Handler {
 			return
 		}
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("Model.Bot: %w", err), http.StatusInternalServerError)
 			return
 		}
 

@@ -46,12 +46,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 func Picker(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
 	g, err := gradientFromUrlValues(r.PostForm)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
 	}
 
@@ -68,19 +68,19 @@ func (s *service) SetBackground(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
 	g, err := gradientFromUrlValues(r.PostForm)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
 	}
 
 	encodedGradient, _ := json.Marshal(g)
 	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values(?, ?)", user.ID, encodedGradient)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("insert into gradients: %w", err), 500)
 		return
 	}
 

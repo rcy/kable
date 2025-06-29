@@ -57,7 +57,7 @@ func (s *service) PutAvatar(w http.ResponseWriter, r *http.Request) {
 		AvatarURL: newAvatarURL,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateAvatar: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.ExecuteNamed(w, avatarsTemplate, "changeable-avatar", struct{ User api.User }{user})

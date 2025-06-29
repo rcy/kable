@@ -2,6 +2,7 @@ package compose
 
 import (
 	_ "embed"
+	"fmt"
 	"log"
 	"net/http"
 	"oj/api"
@@ -39,7 +40,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	connections, err := s.Queries.GetConnections(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.Execute(w, pageTemplate, struct {
@@ -68,7 +69,7 @@ func (s *service) post(w http.ResponseWriter, r *http.Request) {
 
 	_, err := s.Queries.CreatePostcard(ctx, params)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreatePostcard: %w", err), http.StatusInternalServerError)
 		return
 	}
 

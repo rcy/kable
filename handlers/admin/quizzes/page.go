@@ -3,6 +3,7 @@ package quizzes
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/admin/quizzes/create"
@@ -39,7 +40,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 
 	allQuizzes, err := s.Queries.AllQuizzes(ctx)
 	if err != nil && err != sql.ErrNoRows {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AllQuizzes: %w", err), http.StatusInternalServerError)
 		return
 	}
 

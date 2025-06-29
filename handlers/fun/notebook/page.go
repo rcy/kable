@@ -34,7 +34,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	allNotes, err := s.Queries.UserNotes(ctx, l.User.ID)
 	if err != nil && err != sql.ErrNoRows {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserNotes: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (s *service) Post(w http.ResponseWriter, r *http.Request) {
 		OwnerID: user.ID,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateNote: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.ExecuteNamed(w, pageTemplate, "note", note)
@@ -68,13 +68,13 @@ func (s *service) PostFromChat(w http.ResponseWriter, r *http.Request) {
 
 	msg, err := s.Queries.MessageByID(ctx, int64(messageID))
 	if err != nil {
-		render.Error(w, "messageByID: "+err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("MessageByID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	sender, err := s.Queries.UserByID(ctx, msg.SenderID)
 	if err != nil {
-		render.Error(w, "UserByID: "+err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserByID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (s *service) PostFromChat(w http.ResponseWriter, r *http.Request) {
 		Body:    body,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateNote: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (s *service) Put(w http.ResponseWriter, r *http.Request) {
 		Body:    body,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateNote: %w", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -117,7 +117,7 @@ func (s *service) Delete(w http.ResponseWriter, r *http.Request) {
 		OwnerID: user.ID,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("DeleteNote: %w", err), http.StatusInternalServerError)
 		return
 	}
 }

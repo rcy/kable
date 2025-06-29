@@ -2,6 +2,7 @@ package me
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
@@ -33,7 +34,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	unreadUsers, err := s.Queries.UsersWithUnreadCounts(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UsersWithUnreadCounts: %w", err), http.StatusInternalServerError)
 		return
 	}
 

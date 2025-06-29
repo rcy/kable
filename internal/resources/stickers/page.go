@@ -2,6 +2,7 @@ package stickers
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"net/url"
 	"oj/handlers/layout"
@@ -47,7 +48,7 @@ func (rs Resource) page(w http.ResponseWriter, r *http.Request) {
 	var images []Image
 	err := rs.DB.Select(&images, `select * from images where user_id = ? order by created_at desc`, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("select * from images: %w", err), http.StatusInternalServerError)
 		return
 	}
 

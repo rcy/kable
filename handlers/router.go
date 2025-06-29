@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"oj/api"
@@ -54,10 +55,10 @@ func Router(conn *pgxpool.Conn) *chi.Mux {
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		render.Error(w, "Page not found", 404)
+		render.Error(w, errors.New("Page not found"), 404)
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		render.Error(w, "Method not allowed", 405)
+		render.Error(w, errors.New("Method not allowed"), 405)
 	})
 
 	return r
