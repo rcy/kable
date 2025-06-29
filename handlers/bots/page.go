@@ -307,7 +307,7 @@ func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 		Content: content,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("CreateMessage: %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 		AssistantID: bot.AssistantID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("CreateRun: %s", err), http.StatusInternalServerError)
 		return
 	}
 
