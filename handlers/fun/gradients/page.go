@@ -78,7 +78,7 @@ func (s *service) SetBackground(w http.ResponseWriter, r *http.Request) {
 	}
 
 	encodedGradient, _ := json.Marshal(g)
-	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values(?, ?)", user.ID, encodedGradient)
+	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values($1, $2)", user.ID, encodedGradient)
 	if err != nil {
 		render.Error(w, fmt.Errorf("insert into gradients: %w", err), 500)
 		return
