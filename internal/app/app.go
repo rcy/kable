@@ -86,7 +86,7 @@ func (rs Service) Routes() chi.Router {
 	r.Post("/fun/gradients/picker", gradients.Picker)
 	r.Post("/fun/gradients/set-background", gradients.NewService(rs.Queries, rs.Conn).SetBackground)
 
-	r.Mount("/stickers", stickers.Resource{DB: rs.DB}.Routes())
+	r.Mount("/stickers", stickers.Resource{Conn: rs.Conn}.Routes())
 
 	r.Get("/fun/chess", chess.Page)
 	r.Get("/fun/chess/select/{rank}/{file}", chess.Select)

@@ -25,11 +25,7 @@ type contextKey int
 const layoutContextKey contextKey = iota
 
 func FromContext(ctx context.Context) Data {
-	value := ctx.Value(layoutContextKey)
-	if value == nil {
-		return Data{}
-	}
-	return value.(Data)
+	return ctx.Value(layoutContextKey).(Data)
 }
 
 func NewContext(ctx context.Context, data Data) context.Context {
