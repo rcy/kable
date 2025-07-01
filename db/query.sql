@@ -190,7 +190,7 @@ left join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
 where
   u.id != @a_id
 and
-  is_parent = 1
+  is_parent = true
 order by role_in desc
 limit 128;
 

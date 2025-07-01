@@ -866,7 +866,7 @@ left join friends f2 on f2.a_id = u.id and f2.b_id = ?1
 where
   u.id != ?1
 and
-  is_parent = 1
+  is_parent = true
 order by role_in desc
 limit 128
 `
