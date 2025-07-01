@@ -1,7 +1,6 @@
 package attempt
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -36,7 +36,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	attemptID, _ := strconv.Atoi(chi.URLParam(r, "attemptID"))
 	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("GetAttemptID: %w", err), http.StatusNotFound)
 			return
 		}
@@ -46,7 +46,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	quiz, err := s.Queries.Quiz(ctx, attempt.QuizID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusNotFound)
 			return
 		}
@@ -71,7 +71,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		AttemptID: attempt.ID,
 	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			url := fmt.Sprintf("/fun/quizzes/attempts/%d/done", attempt.ID)
 			if r.Header.Get("HX-Request") == "true" {
 				w.Header().Add("HX-Redirect", url)

@@ -1,7 +1,6 @@
 package quizzes
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"oj/handlers/render"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -39,7 +39,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	l := layout.FromContext(ctx)
 
 	allQuizzes, err := s.Queries.AllQuizzes(ctx)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		render.Error(w, fmt.Errorf("AllQuizzes: %w", err), http.StatusInternalServerError)
 		return
 	}

@@ -1,13 +1,14 @@
 package quizzes
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -29,7 +30,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	l := layout.FromContext(ctx)
 
 	allQuizzes, err := s.Queries.PublishedQuizzes(ctx)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		render.Error(w, fmt.Errorf("PublishedQuizzes: %w", err), http.StatusInternalServerError)
 		return
 	}

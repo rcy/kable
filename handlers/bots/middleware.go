@@ -2,7 +2,6 @@ package bots
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 func (rs Resource) provideBot(next http.Handler) http.Handler {
@@ -19,7 +19,7 @@ func (rs Resource) provideBot(next http.Handler) http.Handler {
 
 		botID, _ := strconv.Atoi(chi.URLParam(r, "botID"))
 		bot, err := rs.Model.Bot(ctx, int64(botID))
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			render.NotFound(w)
 			return
 		}

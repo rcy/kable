@@ -1,7 +1,6 @@
 package completed
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -34,7 +34,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	attemptID, _ := strconv.Atoi(chi.URLParam(r, "attemptID"))
 	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusNotFound)
 			return
 		}
@@ -44,7 +44,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	quiz, err := s.Queries.Quiz(ctx, attempt.QuizID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusNotFound)
 			return
 		}

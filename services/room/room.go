@@ -2,11 +2,11 @@ package room
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math"
 	"oj/api"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,7 +15,7 @@ func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Pool, model *api.Q
 
 	room, err := model.RoomByKey(ctx, key)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return build(ctx, conn, model, key, id1, id2)
 		}
 		return nil, err

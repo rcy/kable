@@ -2,7 +2,6 @@ package chat
 
 import (
 	"context"
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"log"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/alexandrevicenzi/go-sse"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,7 +43,7 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 	pageUserID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 	pageUser, err := rs.Queries.UserByID(ctx, int64(pageUserID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("UserByID: %w", err), 404)
 			return
 		}

@@ -2,7 +2,6 @@ package welcome
 
 import (
 	cryptorand "crypto/rand"
-	"database/sql"
 	_ "embed"
 	"encoding/base64"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -160,7 +160,7 @@ func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.Queries.UserByUsername(r.Context(), username)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			err = welcomeKidsTemplate.Execute(w, struct{ Error string }{"User not found"})
 			if err != nil {
 				render.Error(w, fmt.Errorf("welcomeKidsTemplate.Execute: %w", err), http.StatusInternalServerError)
@@ -245,7 +245,7 @@ func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 	// XXX fetch by id alone, compare code, and add retry count
 	err = pgxscan.Get(ctx, s.Conn, &userID, "select user_id from kids_codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
-		if err != sql.ErrNoRows {
+		if err != pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("select user_id from kids_codes: %w", err), 500)
 			return
 		}
@@ -311,7 +311,7 @@ func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 	// XXX fetch by id alone, compare code, and add retry count
 	err = pgxscan.Get(ctx, s.Conn, &email, "select email from codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
-		if err != sql.ErrNoRows {
+		if err != pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("select email from codes: %w", err), 500)
 			return
 		}

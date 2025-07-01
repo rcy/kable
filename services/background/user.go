@@ -2,16 +2,17 @@ package background
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"oj/api"
 	"oj/element/gradient"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func ForUser(ctx context.Context, queries *api.Queries, userID int64) (*gradient.Gradient, error) {
 	gradientRow, err := queries.UserGradient(ctx, userID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &gradient.Default, nil
 	}
 	if err != nil {

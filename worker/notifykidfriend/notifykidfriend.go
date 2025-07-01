@@ -2,7 +2,6 @@ package notifykidfriend
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/acaloiaro/neoq/jobs"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -59,7 +59,7 @@ where f.id = ?
 
 	var mutualID int64
 	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("getting mutual %w", err)
 	}
 

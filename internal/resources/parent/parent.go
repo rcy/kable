@@ -1,7 +1,6 @@
 package parent
 
 import (
-	"database/sql"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"oj/services/family"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -74,7 +74,7 @@ func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
 	username := r.PostForm.Get("username")
 
 	_, err = rs.Queries.UserByUsername(ctx, username)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		kid, err := family.CreateKid(ctx, rs.Queries, user.ID, username)
 		if err != nil {
 			render.Error(w, fmt.Errorf("CreateKid: %w", err), 500)

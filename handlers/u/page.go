@@ -1,7 +1,6 @@
 package u
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -30,7 +30,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 	pageUser, err := s.Queries.UserByID(ctx, int64(userID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("UserByID: %w", err), http.StatusNotFound)
 			return
 		}

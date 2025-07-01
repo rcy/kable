@@ -1,7 +1,6 @@
 package notebook
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -33,7 +33,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	l := layout.FromContext(ctx)
 
 	allNotes, err := s.Queries.UserNotes(ctx, l.User.ID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		render.Error(w, fmt.Errorf("UserNotes: %w", err), http.StatusInternalServerError)
 		return
 	}

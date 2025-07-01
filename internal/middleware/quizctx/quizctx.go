@@ -2,7 +2,6 @@ package quizctx
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"oj/api"
@@ -10,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -34,7 +34,7 @@ func (s *service) Provider(next http.Handler) http.Handler {
 		quizID, _ := strconv.Atoi(chi.URLParam(r, "quizID"))
 		quiz, err := s.Queries.Quiz(ctx, int64(quizID))
 		if err != nil {
-			if err == sql.ErrNoRows {
+			if err == pgx.ErrNoRows {
 				render.NotFound(w)
 				return
 			}

@@ -1,7 +1,6 @@
 package deliveries
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -36,7 +36,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	deliveryID, _ := strconv.Atoi(chi.URLParam(r, "deliveryID"))
 	delivery, err := s.Queries.Delivery(ctx, int64(deliveryID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("Delivery not found: %w", err), http.StatusNotFound)
 		} else {
 			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func (s *service) Logout(w http.ResponseWriter, r *http.Request) {
 	deliveryID, _ := strconv.Atoi(chi.URLParam(r, "deliveryID"))
 	delivery, err := s.Queries.Delivery(ctx, int64(deliveryID))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusNotFound)
 		} else {
 			render.Error(w, fmt.Errorf("Delivery: %w", err), http.StatusInternalServerError)

@@ -2,9 +2,9 @@ package family
 
 import (
 	"context"
-	"database/sql"
 	"oj/api"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -60,7 +60,7 @@ func FindOrCreateParentByEmail(ctx context.Context, queries *api.Queries, email 
 
 	user, err := queries.UserByEmail(ctx, nullableEmail)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			// we don't have a username here, so use the email, they can change it later
 			return queries.CreateParent(ctx, api.CreateParentParams{
 				Email:    nullableEmail,

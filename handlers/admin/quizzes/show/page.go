@@ -1,7 +1,6 @@
 package show
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type service struct {
@@ -46,7 +46,7 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	quiz := quizctx.Value(ctx)
 
 	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		render.Error(w, fmt.Errorf("QuizQuestions: %w", err), http.StatusInternalServerError)
 		return
 	}
@@ -131,7 +131,7 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("id") != "" {
 		questionID, _ := strconv.Atoi(r.FormValue("id"))
 		_, err = s.Queries.Question(ctx, int64(questionID))
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && err != pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("Question: %w", err), http.StatusNotFound)
 			return
 		}
