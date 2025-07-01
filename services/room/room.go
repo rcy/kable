@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Conn, model *api.Queries, id1, id2 int64) (*api.Room, error) {
+func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Pool, model *api.Queries, id1, id2 int64) (*api.Room, error) {
 	key := makeRoomKey(id1, id2)
 
 	room, err := model.RoomByKey(ctx, key)
@@ -24,7 +24,7 @@ func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Conn, model *api.Q
 }
 
 // Create room and add users
-func build(ctx context.Context, conn *pgxpool.Conn, model *api.Queries, key string, userID1, userID2 int64) (*api.Room, error) {
+func build(ctx context.Context, conn *pgxpool.Pool, model *api.Queries, key string, userID1, userID2 int64) (*api.Room, error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, err

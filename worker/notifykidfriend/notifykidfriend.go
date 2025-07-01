@@ -21,8 +21,8 @@ type service struct {
 	Conn    pgxscan.Querier
 }
 
-func NewService(q *api.Queries) *service {
-	return &service{Queries: q}
+func NewService(q *api.Queries, conn pgxscan.Querier) *service {
+	return &service{Queries: q, Conn: conn}
 }
 
 func (s *service) Handle(ctx context.Context) error {

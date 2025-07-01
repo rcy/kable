@@ -36,11 +36,11 @@ import (
 
 type Service struct {
 	DB      *sqlx.DB
-	Conn    *pgxpool.Conn
+	Conn    *pgxpool.Pool
 	Queries *api.Queries
 }
 
-func NewService(q *api.Queries, conn *pgxpool.Conn) *Service {
+func NewService(q *api.Queries, conn *pgxpool.Pool) *Service {
 	return &Service{Queries: q, Conn: conn}
 }
 

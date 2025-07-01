@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"oj/api"
 	"time"
@@ -25,12 +26,14 @@ func (s *service) Provider(next http.Handler) http.Handler {
 
 		cookie, err := r.Cookie("kh_session")
 		if err != nil {
+			slog.Error("Cookie", "err", err)
 			redirectToLogin(w, r)
 			return
 		}
 
 		user, err := s.Queries.UserBySessionKey(ctx, cookie.Value)
 		if err != nil {
+			slog.Error("UserBySessionKey", "err", err)
 			redirectToLogin(w, r)
 			return
 		}

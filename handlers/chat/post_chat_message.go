@@ -61,14 +61,14 @@ func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body
 	}
 
 	// get the users of the room
-	err = pgxscan.Select(ctx, tx, &roomUsers, `select room_users.*, users.email from room_users join users on room_users.user_id = users.id where room_id = ?`, roomID)
+	err = pgxscan.Select(ctx, tx, &roomUsers, `select room_users.*, users.email from room_users join users on room_users.user_id = users.id where room_id = $1`, roomID)
 	if err != nil {
 		return err
 	}
 
 	// create the message
 	var messageID int64
-	err = pgxscan.Get(ctx, tx, &messageID, `insert into messages(room_id, sender_id, body) values(?,?,?) returning id`, roomID, senderID, body)
+	err = pgxscan.Get(ctx, tx, &messageID, `insert into messages(room_id, sender_id, body) values($1,$2,$3) returning id`, roomID, senderID, body)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ import (
 
 var Queue types.Backend
 
-func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Conn) error {
+func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error {
 	var err error
 	Queue, err = neoq.New(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Conn) error 
 
 	Queue.Start(ctx, "notify-delivery", handler.New(notifydelivery.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.NewService(queries, conn).Handle))
-	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries).Handle))
+	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries, conn).Handle))
 
 	log.Print("started worker")
 

@@ -15,7 +15,6 @@ import (
 	"oj/services/background"
 	"oj/services/room"
 	"strconv"
-	"sync"
 
 	"github.com/alexandrevicenzi/go-sse"
 	"github.com/go-chi/chi/v5"
@@ -24,10 +23,10 @@ import (
 
 type Resource struct {
 	Queries *api.Queries
-	Conn    *pgxpool.Conn
+	Conn    *pgxpool.Pool
 }
 
-func NewService(q *api.Queries, conn *pgxpool.Conn) *Resource {
+func NewService(q *api.Queries, conn *pgxpool.Pool) *Resource {
 	return &Resource{Queries: q, Conn: conn}
 }
 
@@ -97,14 +96,9 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 	render.Execute(w, pageTemplate, pd)
 }
 
-var udMut sync.Mutex
-
 func (rs Resource) updateDeliveries(roomID, userID int64) error {
-	udMut.Lock()
-	defer udMut.Unlock()
-
-	log.Printf("UPDATE DELIVERIES %d", userID, rs.Conn)
-	_, err := rs.Conn.Exec(context.TODO(), `update deliveries set sent_at = current_timestamp where sent_at is null and room_id = $1 and recipient_id = $2`, roomID, userID)
+	log.Printf("UPDATE DELIVERIES %d %v", userID, rs.Conn)
+	_, err := rs.Conn.Exec(context.TODO(), `update deliveries set sent_at = now() where sent_at is null and room_id = $1 and recipient_id = $2`, roomID, userID)
 	if err != nil {
 		return fmt.Errorf("Exec", err)
 	}

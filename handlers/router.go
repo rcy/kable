@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Router(conn *pgxpool.Conn) *chi.Mux {
+func Router(conn *pgxpool.Pool) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

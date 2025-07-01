@@ -18,11 +18,11 @@ import (
 )
 
 type service struct {
-	Conn    *pgxpool.Conn
+	Conn    *pgxpool.Pool
 	Queries *api.Queries
 }
 
-func NewService(conn *pgxpool.Conn, queries *api.Queries) *service {
+func NewService(conn *pgxpool.Pool, queries *api.Queries) *service {
 	return &service{
 		Conn:    conn,
 		Queries: queries,
