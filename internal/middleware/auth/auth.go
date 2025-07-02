@@ -26,7 +26,7 @@ func (s *service) Provider(next http.Handler) http.Handler {
 
 		cookie, err := r.Cookie("kh_session")
 		if err != nil {
-			slog.Error("Cookie", "err", err)
+			slog.Info("Cookie", "err", err)
 			redirectToLogin(w, r)
 			return
 		}
