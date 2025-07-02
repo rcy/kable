@@ -56,7 +56,7 @@ from deliveries d
 join users r on r.id = d.recipient_id
 join users s on s.id = d.sender_id
 join messages m on m.id = d.message_id
-where d.id = ?`, j.Payload["id"])
+where d.id = $1`, j.Payload["id"])
 	if err != nil {
 		return err
 	}

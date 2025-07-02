@@ -129,7 +129,7 @@ delete from users where id = ?;
 func (rs Resource) logoutKid(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 
-	_, err := rs.DB.Exec(`delete from sessions where user_id = ?`, userID)
+	_, err := rs.DB.Exec(`delete from sessions where user_id = $1`, userID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("delete from sessions: %w", err), http.StatusInternalServerError)
 		return

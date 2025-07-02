@@ -77,7 +77,7 @@ func (s *service) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = s.Conn.Exec(ctx, `delete from sessions where user_id = ?`, l.User.ID)
+	_, err = s.Conn.Exec(ctx, `delete from sessions where user_id = $1`, l.User.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("delete from sessions: %w", err), http.StatusInternalServerError)
 		return

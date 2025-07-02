@@ -65,7 +65,7 @@ func (s *service) PutParentFriend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var friendID int64
-	err = pgxscan.Get(ctx, s.Conn, &friendID, `insert into friends(a_id, b_id, b_role) values(?,?,'friend') returning id`, currentUser.ID, user.ID)
+	err = pgxscan.Get(ctx, s.Conn, &friendID, `insert into friends(a_id, b_id, b_role) values($1,$2,'friend') returning id`, currentUser.ID, user.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

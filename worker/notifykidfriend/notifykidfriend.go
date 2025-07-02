@@ -51,14 +51,14 @@ select
 from friends f
 join users a on a.id = f.a_id
 join users b on b.id = f.b_id
-where f.id = ?
+where f.id = $1
 `, j.Payload["id"])
 	if err != nil {
 		return fmt.Errorf("getting friend %w", err)
 	}
 
 	var mutualID int64
-	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
+	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("getting mutual %w", err)
 	}
