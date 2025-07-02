@@ -46,6 +46,10 @@ func Router(conn *pgxpool.Pool) *chi.Mux {
 		r.Route("/welcome", s.Route)
 	})
 
+	r.Get("/.well-known/*", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// serve static files
 	fs := http.FileServer(http.Dir("assets"))
 	r.Handle("/assets/*", http.StripPrefix("/assets", fs))
