@@ -59,13 +59,18 @@ func FromContext(ctx context.Context) api.User {
 
 var ErrNotAuthorized = errors.New("Not authorized")
 
-// Save the current path in a cookie and redirect to welcome page
+// Save the current path in a cookie and redirect to welcome page.  Don't overwrite existing value.
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:    "redirect",
-		Value:   r.URL.Path,
-		Path:    "/",
-		Expires: time.Now().Add(1 * time.Hour)})
+	_, err := r.Cookie("redirect")
+	if errors.Is(err, http.ErrNoCookie) {
+		http.SetCookie(w, &http.Cookie{
+			Name:    "redirect",
+			Value:   r.URL.Path,
+			Path:    "/",
+			Expires: time.Now().Add(1 * time.Hour)})
+
+		slog.Info("Saving redirect", "path", r.URL.Path)
+	}
 
 	http.Redirect(w, r, "/welcome", http.StatusSeeOther)
 }

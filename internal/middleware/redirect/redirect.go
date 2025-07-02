@@ -1,6 +1,7 @@
 package redirect
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -17,5 +18,6 @@ func Redirect(next http.Handler) http.Handler {
 		cookie.Expires = time.Unix(0, 0)
 		http.SetCookie(w, cookie)
 		http.Redirect(w, r, cookie.Value, http.StatusFound)
+		slog.Info("Following redirect", "path", cookie.Value)
 	})
 }
