@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hako/durafmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rcy/durfmt"
 )
 
@@ -22,8 +23,8 @@ var FuncMap = template.FuncMap{
 	"markdown": func(str string) template.HTML {
 		return md.Markdown(str)
 	},
-	"ago": func(t time.Time) string {
-		dur := time.Now().Sub(t)
+	"ago": func(t pgtype.Timestamptz) string {
+		dur := time.Now().Sub(t.Time)
 		if dur < time.Minute {
 			return "just now"
 		}

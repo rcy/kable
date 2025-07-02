@@ -2,24 +2,32 @@ package become
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 )
 
-func Provider(next http.Handler) http.Handler {
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Provider(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		becomeUser, err := getUser(ctx)
+		becomeUser, err := s.getUser(ctx)
 		if err != nil {
 			if err == auth.ErrNotAuthorized {
-				render.Error(w, err.Error(), http.StatusUnauthorized)
+				render.Error(w, fmt.Errorf("getUser: %w", err), http.StatusUnauthorized)
 				return
 			}
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("getUser: %w", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -32,8 +40,7 @@ func Provider(next http.Handler) http.Handler {
 	})
 }
 
-func getUser(ctx context.Context) (*api.User, error) {
-	queries := api.New(db.DB)
+func (s *service) getUser(ctx context.Context) (*api.User, error) {
 	user := auth.FromContext(ctx)
 	if !user.BecomeUserID.Valid {
 		return nil, nil
@@ -41,6 +48,6 @@ func getUser(ctx context.Context) (*api.User, error) {
 	if !user.Admin {
 		return nil, auth.ErrNotAuthorized
 	}
-	becomeUser, err := queries.UserByID(ctx, user.BecomeUserID.Int64)
+	becomeUser, err := s.Queries.UserByID(ctx, user.BecomeUserID.Int64)
 	return &becomeUser, err
 }

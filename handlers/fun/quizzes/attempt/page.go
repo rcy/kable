@@ -1,12 +1,10 @@
 package attempt
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
@@ -14,7 +12,16 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 var (
 	//go:embed page.gohtml
@@ -22,50 +29,49 @@ var (
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
-	queries := api.New(db.DB)
 
 	attemptID, _ := strconv.Atoi(chi.URLParam(r, "attemptID"))
-	attempt, err := queries.GetAttemptByID(ctx, int64(attemptID))
+	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
-		if err == sql.ErrNoRows {
-			render.Error(w, "attempt not found", http.StatusNotFound)
+		if err == pgx.ErrNoRows {
+			render.Error(w, fmt.Errorf("GetAttemptID: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetAttemptID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	quiz, err := queries.Quiz(ctx, attempt.QuizID)
+	quiz, err := s.Queries.Quiz(ctx, attempt.QuizID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			render.Error(w, "quiz not found", http.StatusNotFound)
+		if err == pgx.ErrNoRows {
+			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	questionCount, err := queries.QuestionCount(ctx, quiz.ID)
+	questionCount, err := s.Queries.QuestionCount(ctx, quiz.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("QuestionCount: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	responseCount, err := queries.ResponseCount(ctx, attempt.ID)
+	responseCount, err := s.Queries.ResponseCount(ctx, attempt.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("ResponseCount: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	nextQuestion, err := queries.AttemptNextQuestion(ctx, api.AttemptNextQuestionParams{
+	nextQuestion, err := s.Queries.AttemptNextQuestion(ctx, api.AttemptNextQuestionParams{
 		QuizID:    attempt.QuizID,
 		AttemptID: attempt.ID,
 	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			url := fmt.Sprintf("/fun/quizzes/attempts/%d/done", attempt.ID)
 			if r.Header.Get("HX-Request") == "true" {
 				w.Header().Add("HX-Redirect", url)
@@ -75,7 +81,7 @@ func Page(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, url, http.StatusSeeOther)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AttemptNextQuestion: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -96,42 +102,41 @@ func Page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func PostResponse(w http.ResponseWriter, r *http.Request) {
+func (s *service) PostResponse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	user := auth.FromContext(ctx)
 
 	attemptID, err := strconv.Atoi(chi.URLParam(r, "attemptID"))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Atoi: %w", err), http.StatusInternalServerError)
 		return
 	}
-	attempt, err := queries.GetAttemptByID(ctx, int64(attemptID))
+	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	questionID, err := strconv.Atoi(chi.URLParam(r, "questionID"))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Atoi: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	text := strings.TrimSpace(r.FormValue("response"))
 
 	if text != "" {
-		_, err := queries.CreateResponse(ctx, api.CreateResponseParams{
+		_, err := s.Queries.CreateResponse(ctx, api.CreateResponseParams{
 			QuizID:     attempt.QuizID,
 			UserID:     user.ID,
-			AttemptID:  attemptID,
-			QuestionID: questionID,
+			AttemptID:  int64(attemptID),
+			QuestionID: int64(questionID),
 			Text:       text,
 		})
 
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("CreateResponse: %w", err), http.StatusInternalServerError)
 			return
 		}
 	}

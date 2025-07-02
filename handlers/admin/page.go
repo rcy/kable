@@ -2,6 +2,7 @@ package admin
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
 	"oj/element/gradient"
@@ -13,21 +14,26 @@ import (
 	"oj/handlers/render"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Resource struct {
-	DB *sqlx.DB
+type service struct {
+	Conn    *pgxpool.Pool
+	Queries *api.Queries
 }
 
-func (rs Resource) Routes() chi.Router {
+func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
+	return &service{Queries: q, Conn: conn}
+}
+
+func (s *service) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(auth.EnsureAdmin)
 	r.Use(background.Set(gradient.Admin))
-	r.Get("/", rs.page)
-	r.Route("/quizzes", quizzes.Router)
-	r.Route("/messages", messages.Router)
+	r.Get("/", s.page)
+	r.Route("/quizzes", quizzes.NewService(s.Queries).Router)
+	r.Route("/messages", messages.NewService(s.Queries).Router)
 	return r
 }
 
@@ -37,15 +43,14 @@ var (
 	pageTemplate = layout.MustParse(pageContent, pageContent)
 )
 
-func (rs Resource) page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(rs.DB)
 
 	l := layout.FromContext(r.Context())
 
-	allUsers, err := queries.AllUsers(ctx)
+	allUsers, err := s.Queries.AllUsers(ctx)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AllUsers: %w", err), http.StatusInternalServerError)
 		return
 	}
 

@@ -2,20 +2,31 @@ package notifyfriend
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/url"
+	"oj/api"
 	"oj/app"
-	"oj/db"
 	"oj/services/email"
 	"time"
 
 	"github.com/acaloiaro/neoq/jobs"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Handle(ctx context.Context) error {
+type service struct {
+	Conn    *pgxpool.Pool
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
+	return &service{Queries: q, Conn: conn}
+}
+
+func (s *service) Handle(ctx context.Context) error {
 	j, err := jobs.FromContext(ctx)
 	if err != nil {
 		return err
@@ -32,7 +43,7 @@ func Handle(ctx context.Context) error {
 		TargetEmail string    `db:"target_email"`
 	}
 
-	err = db.DB.Get(&friend, `
+	err = pgxscan.Get(ctx, s.Conn, &friend, `
 select
   f.id, f.created_at,
   a.id a_id, a.email, a.username,
@@ -40,15 +51,15 @@ select
 from friends f
 join users a on a.id = f.a_id
 join users b on b.id = f.b_id
-where f.id = ?
+where f.id = $1
 `, j.Payload["id"])
 	if err != nil {
 		return err
 	}
 
 	var mutualID int64
-	err = db.DB.Get(&mutualID, `select id from friends where a_id = ? and b_id = ?`, friend.BID, friend.AID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
 

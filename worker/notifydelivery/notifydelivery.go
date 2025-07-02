@@ -7,16 +7,24 @@ import (
 	"net/url"
 	"oj/api"
 	"oj/app"
-	"oj/db"
 	"oj/services/email"
 	"time"
 
 	"github.com/acaloiaro/neoq/jobs"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Handle(ctx context.Context) error {
-	queries := api.New(db.DB)
+type service struct {
+	Queries *api.Queries
+	Conn    *pgxpool.Pool
+}
 
+func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
+	return &service{Queries: q, Conn: conn}
+}
+
+func (s *service) Handle(ctx context.Context) error {
 	j, err := jobs.FromContext(ctx)
 	if err != nil {
 		return err
@@ -34,7 +42,7 @@ func Handle(ctx context.Context) error {
 		SentAt         *time.Time `db:"sent_at"`
 	}
 
-	err = db.DB.Get(&delivery, `
+	err = pgxscan.Get(ctx, s.Conn, &delivery, `
 select
   d.id,
   r.username username,
@@ -48,7 +56,7 @@ from deliveries d
 join users r on r.id = d.recipient_id
 join users s on s.id = d.sender_id
 join messages m on m.id = d.message_id
-where d.id = ?`, j.Payload["id"])
+where d.id = $1`, j.Payload["id"])
 	if err != nil {
 		return err
 	}
@@ -64,11 +72,11 @@ where d.id = ?`, j.Payload["id"])
 	link := app.AbsoluteURL(url.URL{Path: fmt.Sprintf("/deliveries/%d", delivery.ID)})
 
 	if delivery.Email == nil {
-		recipient, err := queries.UserByID(ctx, delivery.RecipientID)
+		recipient, err := s.Queries.UserByID(ctx, delivery.RecipientID)
 		if err != nil {
 			return err
 		}
-		parents, err := queries.ParentsByKidID(ctx, recipient.ID)
+		parents, err := s.Queries.ParentsByKidID(ctx, recipient.ID)
 		if err != nil {
 			return err
 		}

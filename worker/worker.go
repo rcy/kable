@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"log"
+	"oj/api"
 	"oj/worker/notifydelivery"
 	"oj/worker/notifyfriend"
 	"oj/worker/notifykidfriend"
@@ -12,20 +13,21 @@ import (
 	"github.com/acaloiaro/neoq/handler"
 	"github.com/acaloiaro/neoq/jobs"
 	"github.com/acaloiaro/neoq/types"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var Queue types.Backend
 
-func Start(ctx context.Context) error {
+func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error {
 	var err error
 	Queue, err = neoq.New(ctx)
 	if err != nil {
 		return err
 	}
 
-	Queue.Start(ctx, "notify-delivery", handler.New(notifydelivery.Handle))
-	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.Handle))
-	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.Handle))
+	Queue.Start(ctx, "notify-delivery", handler.New(notifydelivery.NewService(queries, conn).Handle))
+	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.NewService(queries, conn).Handle))
+	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries, conn).Handle))
 
 	log.Print("started worker")
 

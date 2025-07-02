@@ -2,9 +2,9 @@ package messages
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"strconv"
@@ -12,9 +12,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(r chi.Router) {
-	r.Get("/", page)
-	r.Delete("/{messageID}", deleteMessage)
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Router(r chi.Router) {
+	r.Get("/", s.page)
+	r.Delete("/{messageID}", s.deleteMessage)
 }
 
 var (
@@ -23,15 +31,14 @@ var (
 	pageTemplate = layout.MustParse(pageContent, pageContent)
 )
 
-func page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	l := layout.FromContext(r.Context())
 
-	messages, err := queries.AdminRecentMessages(ctx)
+	messages, err := s.Queries.AdminRecentMessages(ctx)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AdminRecentMessages: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -44,12 +51,11 @@ func page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func deleteMessage(w http.ResponseWriter, r *http.Request) {
+func (s *service) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	messageID, _ := strconv.Atoi(chi.URLParam(r, "messageID"))
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
-	message, err := queries.AdminDeleteMessage(ctx, int64(messageID))
+	message, err := s.Queries.AdminDeleteMessage(ctx, int64(messageID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

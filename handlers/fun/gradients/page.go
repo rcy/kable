@@ -6,13 +6,24 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"oj/db"
+	"oj/api"
 	"oj/element/gradient"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"strconv"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type service struct {
+	Conn    *pgxpool.Pool
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
+	return &service{Queries: q, Conn: conn}
+}
 
 var (
 	//go:embed "page.gohtml"
@@ -35,12 +46,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 func Picker(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
 	g, err := gradientFromUrlValues(r.PostForm)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
 	}
 
@@ -51,25 +62,25 @@ func Picker(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func SetBackground(w http.ResponseWriter, r *http.Request) {
+func (s *service) SetBackground(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
 
 	err := r.ParseForm()
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
 	g, err := gradientFromUrlValues(r.PostForm)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
 	}
 
 	encodedGradient, _ := json.Marshal(g)
-	_, err = db.DB.Exec("insert into gradients(user_id, gradient) values(?, ?)", user.ID, encodedGradient)
+	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values($1, $2)", user.ID, encodedGradient)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("insert into gradients: %w", err), 500)
 		return
 	}
 

@@ -2,10 +2,10 @@ package compose
 
 import (
 	_ "embed"
+	"fmt"
 	"log"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
@@ -14,9 +14,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(r chi.Router) {
-	r.Get("/", page)
-	r.Post("/", post)
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Router(r chi.Router) {
+	r.Get("/", s.page)
+	r.Post("/", s.post)
 }
 
 var (
@@ -26,14 +34,13 @@ var (
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	l := layout.FromContext(r.Context())
 
-	connections, err := queries.GetConnections(ctx, l.User.ID)
+	connections, err := s.Queries.GetConnections(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.Execute(w, pageTemplate, struct {
@@ -45,9 +52,8 @@ func page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func post(w http.ResponseWriter, r *http.Request) {
+func (s *service) post(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	sender := auth.FromContext(ctx)
 
 	recipient, _ := strconv.Atoi(r.FormValue("recipient"))
@@ -61,9 +67,9 @@ func post(w http.ResponseWriter, r *http.Request) {
 
 	log.Print("postcard", params)
 
-	_, err := queries.CreatePostcard(ctx, params)
+	_, err := s.Queries.CreatePostcard(ctx, params)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreatePostcard: %w", err), http.StatusInternalServerError)
 		return
 	}
 

@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"oj/api"
-	"oj/db"
 	"oj/element/gradient"
 	"oj/services/background"
 	"oj/templatehelpers"
+
+	"github.com/georgysavva/scany/v2/pgxscan"
 )
 
 var (
@@ -37,16 +38,16 @@ type Data struct {
 	UnreadCount        int
 }
 
-func FromUser(ctx context.Context, user api.User) (Data, error) {
-	backgroundGradient, err := background.ForUser(ctx, user.ID)
+func (s *service) FromUser(ctx context.Context, user api.User) (Data, error) {
+	backgroundGradient, err := background.ForUser(ctx, s.Queries, user.ID)
 	if err != nil {
 		return Data{}, err
 	}
 
 	var unreadCount int
-	err = db.DB.Get(&unreadCount, `select count(*) from deliveries where recipient_id = ? and sent_at is null`, user.ID)
+	err = pgxscan.Get(ctx, s.Conn, &unreadCount, `select count(*) from deliveries where recipient_id = $1 and sent_at is null`, user.ID)
 	if err != nil {
-		return Data{}, err
+		return Data{}, fmt.Errorf("pgxscan: %w", err)
 	}
 
 	return Data{

@@ -9,7 +9,7 @@ import (
 func Execute(w http.ResponseWriter, t *template.Template, data any) {
 	bytes, err := ExecuteToBytes(t, data)
 	if err != nil {
-		Error(w, err.Error(), 500)
+		Error(w, err, 500)
 	} else {
 		w.Write(bytes)
 	}
@@ -18,7 +18,7 @@ func Execute(w http.ResponseWriter, t *template.Template, data any) {
 func ExecuteNamed(w http.ResponseWriter, t *template.Template, name string, data any) {
 	bytes, err := ExecuteNamedToBytes(t, name, data)
 	if err != nil {
-		Error(w, err.Error(), 500)
+		Error(w, err, 500)
 	} else {
 		w.Write(bytes)
 	}

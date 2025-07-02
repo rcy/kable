@@ -4,12 +4,9 @@ import (
 	"context"
 	"log"
 	"oj/api"
-	"oj/db"
 )
 
-func ReachableKids(ctx context.Context, kidID int64) ([]api.GetConnectionRow, error) {
-	queries := api.New(db.DB)
-
+func ReachableKids(ctx context.Context, queries *api.Queries, kidID int64) ([]api.GetConnectionRow, error) {
 	// get possible friend connections
 	// find all the kids of all the friends of this kid's parenst
 
@@ -48,7 +45,10 @@ func ReachableKids(ctx context.Context, kidID int64) ([]api.GetConnectionRow, er
 
 	var connections []api.GetConnectionRow
 	for kidID := range reachableKids {
-		connection, err := queries.GetConnection(ctx, api.GetConnectionParams{AID: kidID, ID: kidID})
+		connection, err := queries.GetConnection(ctx, api.GetConnectionParams{
+			AID: kidID,
+			ID:  kidID,
+		})
 		if err != nil {
 			return nil, err
 		}

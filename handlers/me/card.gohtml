@@ -8,7 +8,7 @@
 
         <div style="display: flex; flex-direction: column">
           <h1>{{.User.Username}}</h1>
-          <div>Joined {{fromNow .User.CreatedAt}} ago</div>
+          <div>Joined {{fromNow .User.CreatedAt.Time}} ago</div>
         </div>
       </div>
       {{if .User.IsParent}}

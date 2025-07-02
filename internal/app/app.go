@@ -30,15 +30,21 @@ import (
 	"oj/internal/resources/stickers"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jmoiron/sqlx"
 )
 
-type Resource struct {
-	DB    *sqlx.DB
-	Model *api.Queries
+type Service struct {
+	DB      *sqlx.DB
+	Conn    *pgxpool.Pool
+	Queries *api.Queries
 }
 
-func (rs Resource) Routes() chi.Router {
+func NewService(q *api.Queries, conn *pgxpool.Pool) *Service {
+	return &Service{Queries: q, Conn: conn}
+}
+
+func (rs Service) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/me", http.StatusFound)
@@ -46,64 +52,97 @@ func (rs Resource) Routes() chi.Router {
 
 	r.Get("/header", header.Header)
 
-	r.Mount("/parent", parent.Resource{DB: rs.DB, Model: rs.Model}.Routes())
+	r.Mount("/parent", parent.Resource{DB: rs.DB, Queries: rs.Queries}.Routes())
 
 	r.Mount("/es", eventsource.SSE)
 
-	r.Get("/me", me.Page)
-	r.Get("/me/edit", editme.MyPageEdit)
-	r.Post("/me/edit", editme.Post)
-	r.Get("/avatars", editme.GetAvatars)
-	r.Put("/avatar", editme.PutAvatar)
+	r.Group(func(r chi.Router) {
+		s := me.NewService(rs.Queries)
+		r.Get("/me", s.Page)
+	})
 
-	r.Get("/me/humans", humans.Page)
-	r.Get("/me/family", family.Page)
-	r.Get("/me/friends", friends.Page)
+	r.Group(func(r chi.Router) {
+		s := editme.NewService(rs.Queries, rs.Conn)
+		r.Get("/me/edit", s.MyPageEdit)
+		r.Post("/me/edit", s.Post)
+		r.Get("/avatars", s.GetAvatars)
+		r.Put("/avatar", s.PutAvatar)
+	})
 
+	r.Group(func(r chi.Router) {
+		s := humans.NewService(rs.Queries)
+		r.Get("/me/humans", s.Page)
+	})
+	r.Group(func(r chi.Router) {
+		s := family.NewService(rs.Queries)
+		r.Get("/me/family", s.Page)
+	})
+	r.Group(func(r chi.Router) {
+		s := friends.NewService(rs.Queries)
+		r.Get("/me/friends", s.Page)
+	})
 	r.Get("/fun", fun.Page)
 	r.Get("/fun/gradients", gradients.Index)
 	r.Post("/fun/gradients/picker", gradients.Picker)
-	r.Post("/fun/gradients/set-background", gradients.SetBackground)
+	r.Post("/fun/gradients/set-background", gradients.NewService(rs.Queries, rs.Conn).SetBackground)
 
-	r.Mount("/stickers", stickers.Resource{DB: rs.DB}.Routes())
+	r.Mount("/stickers", stickers.Resource{Conn: rs.Conn}.Routes())
 
 	r.Get("/fun/chess", chess.Page)
 	r.Get("/fun/chess/select/{rank}/{file}", chess.Select)
 	r.Get("/fun/chess/unselect", chess.Unselect)
 	//r.Get("/fun/chess/select/{r1}/{f1}/{r2}/{f2}", chess.Move)
 
-	r.Get("/fun/quizzes", quizzes.Page)
-	r.Route("/fun/quizzes/{quizID}", quiz.Router)
-	r.Get("/fun/quizzes/attempts/{attemptID}", attempt.Page)
-	r.Get("/fun/quizzes/attempts/{attemptID}/done", completed.Page)
-	r.Post("/fun/quizzes/attempts/{attemptID}/question/{questionID}/response", attempt.PostResponse)
+	r.Get("/fun/quizzes", quizzes.NewService(rs.Queries).Page)
+	r.Route("/fun/quizzes/{quizID}", quiz.NewService(rs.Queries).Router)
+	r.Get("/fun/quizzes/attempts/{attemptID}", attempt.NewService(rs.Queries).Page)
+	r.Get("/fun/quizzes/attempts/{attemptID}/done", completed.NewService(rs.Queries).Page)
+	r.Post("/fun/quizzes/attempts/{attemptID}/question/{questionID}/response", attempt.NewService(rs.Queries).PostResponse)
 
-	r.Get("/fun/notes", notebook.Page)
-	r.Post("/fun/notes", notebook.Post)
-	r.Put("/fun/notes/{noteID}", notebook.Put)
-	r.Delete("/fun/notes/{noteID}", notebook.Delete)
-	r.Post("/fun/notes/from-chat/{messageID}", notebook.PostFromChat)
+	r.Group(func(r chi.Router) {
+		s := notebook.NewService(rs.Queries)
+		r.Get("/fun/notes", s.Page)
+		r.Post("/fun/notes", s.Post)
+		r.Put("/fun/notes/{noteID}", s.Put)
+		r.Delete("/fun/notes/{noteID}", s.Delete)
+		r.Post("/fun/notes/from-chat/{messageID}", s.PostFromChat)
+	})
 
-	r.Mount("/bots", bots.Resource{Model: rs.Model, AI: ai.New().Client}.Routes())
+	r.Mount("/bots", bots.Resource{Model: rs.Queries, AI: ai.New().Client}.Routes())
 
-	r.Route("/u/{userID}", u.Router)
+	r.Route("/u/{userID}", u.NewService(rs.Queries).Router)
 
-	r.Get("/u/{userID}/chat", chat.Resource{DB: rs.DB, Model: rs.Model}.Page)
-	r.Post("/chat/messages", chat.Resource{DB: rs.DB, Model: rs.Model}.PostChatMessage)
+	r.Group(func(r chi.Router) {
+		s := chat.NewService(rs.Queries, rs.Conn)
+		r.Get("/u/{userID}/chat", s.Page)
+		r.Post("/chat/messages", s.PostChatMessage)
+	})
 
-	r.Get("/connect", connect.Connect)
-	r.Put("/connect/friend/{userID}", connect.PutParentFriend)
-	r.Delete("/connect/friend/{userID}", connect.DeleteParentFriend)
+	r.Group(func(r chi.Router) {
+		s := connect.NewService(rs.Queries, rs.Conn)
+		r.Get("/connect", s.Connect)
+		r.Put("/connect/friend/{userID}", s.PutParentFriend)
+		r.Delete("/connect/friend/{userID}", s.DeleteParentFriend)
+	})
 
-	r.Get("/connectkids", connectkids.KidConnect)
-	r.Put("/connectkids/friend/{userID}", connectkids.PutKidFriend)
-	r.Delete("/connectkids/friend/{userID}", connectkids.DeleteKidFriend)
+	r.Group(func(r chi.Router) {
+		s := connectkids.NewService(rs.Conn, rs.Queries)
+		r.Get("/connectkids", s.KidConnect)
+		r.Put("/connectkids/friend/{userID}", s.PutKidFriend)
+		r.Delete("/connectkids/friend/{userID}", s.DeleteKidFriend)
+	})
 
-	r.Get("/deliveries/{deliveryID}", deliveries.Page)
-	r.Get("/delivery/{deliveryID}", deliveries.Page) // temporary
-	r.Post("/deliveries/{deliveryID}/logout", deliveries.Logout)
+	r.Group(func(r chi.Router) {
+		s := deliveries.NewService(rs.Queries, rs.Conn)
+		r.Get("/deliveries/{deliveryID}", s.Page)
+		r.Get("/delivery/{deliveryID}", s.Page) // temporary
+		r.Post("/deliveries/{deliveryID}/logout", s.Logout)
+	})
 
-	r.Route("/postoffice", postoffice.Router)
+	r.Group(func(r chi.Router) {
+		s := postoffice.NewService(rs.Queries)
+		r.Route("/postoffice", s.Router)
+	})
 
 	return r
 }
