@@ -141,7 +141,7 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 			Answer: r.FormValue("answer"),
 		})
 		if err != nil {
-			render.Error(w, fmt.Errorf("UpdateQuestion", err), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("UpdateQuestion: %w", err), http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -151,7 +151,7 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 			Answer: r.FormValue("answer"),
 		})
 		if err != nil {
-			render.Error(w, fmt.Errorf("CreateQuestion", err), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("CreateQuestion: %w", err), http.StatusInternalServerError)
 			return
 		}
 	}

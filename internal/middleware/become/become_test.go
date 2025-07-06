@@ -39,7 +39,7 @@ type testHandler struct {
 
 func (h testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	got := auth.FromContext(r.Context())
-	if got.Username.String != h.want {
+	if got.Username != h.want {
 		h.t.Errorf("want %v got %v", h.want, got.Username)
 	}
 }

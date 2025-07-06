@@ -100,7 +100,7 @@ func (rs Resource) updateDeliveries(roomID, userID int64) error {
 	log.Printf("UPDATE DELIVERIES %d %v", userID, rs.Conn)
 	_, err := rs.Conn.Exec(context.TODO(), `update deliveries set sent_at = now() where sent_at is null and room_id = $1 and recipient_id = $2`, roomID, userID)
 	if err != nil {
-		return fmt.Errorf("Exec", err)
+		return fmt.Errorf("Exec: %w", err)
 	}
 	log.Printf("UPDATE DELIVERIES %d...done", userID)
 
