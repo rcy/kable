@@ -28,7 +28,7 @@ func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("body")
 
 	if strings.TrimSpace(body) != "" {
-		err = rs.postMessage(r.Context(), int64(roomID), user.ID, body)
+		err = rs.postMessage(ctx, int64(roomID), user.ID, body)
 		if err != nil {
 			render.Error(w, fmt.Errorf("postMessage: %w", err), 500)
 			return
@@ -77,7 +77,7 @@ func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body
 	var deliveryIDs []int64
 	for _, roomUser := range roomUsers {
 		var deliveryID int64
-		err = pgxscan.Get(ctx, tx, &deliveryID, `insert into deliveries(message_id, room_id, sender_id, recipient_id) values(?,?,?,?) returning id`, messageID, roomID, senderID, roomUser.UserID)
+		err = pgxscan.Get(ctx, tx, &deliveryID, `insert into deliveries(message_id, room_id, sender_id, recipient_id) values($1,$2,$3,$4) returning id`, messageID, roomID, senderID, roomUser.UserID)
 		if err != nil {
 			return err
 		}
