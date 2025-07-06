@@ -8,7 +8,7 @@ import (
 )
 
 func TestApplicationRouter(t *testing.T) {
-	routes := Resource{DB: db.DB}.Routes()
+	routes := Service{DB: db.DB}.Routes()
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

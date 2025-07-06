@@ -51,7 +51,7 @@ select users.*, count(*) unread_count
 from deliveries
 join users on sender_id = users.id
 where recipient_id = @recipient_id and sent_at is null
-group by users.username;
+group by users.id;
 
 
 -- name: GetAttemptByID :one
@@ -190,7 +190,7 @@ left join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
 where
   u.id != @a_id
 and
-  is_parent = 1
+  is_parent = true
 order by role_in desc
 limit 128;
 
@@ -225,7 +225,7 @@ on g.user_id = f1.b_id
 where f1.b_role <> 'friend'
 group by u.id;
 
--- name: GetConnectionsWithGradient :many
+-- name: GetConnectionsWithGradientDeprecated :many
 select u.*, g.gradient, max(g.created_at)
 from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = @a_id

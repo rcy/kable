@@ -2,12 +2,20 @@ package me
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 var (
 	//go:embed card.gohtml
@@ -19,15 +27,14 @@ var (
 	pageTemplate = layout.MustParse(pageContent, CardContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	l := layout.FromContext(r.Context())
 
-	unreadUsers, err := queries.UsersWithUnreadCounts(ctx, l.User.ID)
+	unreadUsers, err := s.Queries.UsersWithUnreadCounts(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UsersWithUnreadCounts: %w", err), http.StatusInternalServerError)
 		return
 	}
 

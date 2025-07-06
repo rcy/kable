@@ -1,17 +1,25 @@
 package completed
 
 import (
-	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 var (
 	//go:embed page.gohtml
@@ -19,41 +27,40 @@ var (
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
-	queries := api.New(db.DB)
 
 	attemptID, _ := strconv.Atoi(chi.URLParam(r, "attemptID"))
-	attempt, err := queries.GetAttemptByID(ctx, int64(attemptID))
+	attempt, err := s.Queries.GetAttemptByID(ctx, int64(attemptID))
 	if err != nil {
-		if err == sql.ErrNoRows {
-			render.Error(w, "attempt not found", http.StatusNotFound)
+		if err == pgx.ErrNoRows {
+			render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetAttemptByID: %w", err), http.StatusNotFound)
 		return
 	}
 
-	quiz, err := queries.Quiz(ctx, attempt.QuizID)
+	quiz, err := s.Queries.Quiz(ctx, attempt.QuizID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			render.Error(w, "attempt not found", http.StatusNotFound)
+		if err == pgx.ErrNoRows {
+			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusNotFound)
 			return
 		}
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	questionCount, err := queries.QuestionCount(ctx, quiz.ID)
+	questionCount, err := s.Queries.QuestionCount(ctx, quiz.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("QuestionCount: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	responses, err := queries.Responses(ctx, attempt.ID)
+	responses, err := s.Queries.Responses(ctx, attempt.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Responses: %w", err), http.StatusInternalServerError)
 		return
 	}
 

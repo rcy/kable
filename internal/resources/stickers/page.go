@@ -2,6 +2,7 @@ package stickers
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"net/url"
 	"oj/handlers/layout"
@@ -9,13 +10,14 @@ import (
 	"oj/internal/middleware/auth"
 	"time"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	goduckgo "github.com/minoplhy/duckduckgo-images-api"
 )
 
 type Resource struct {
-	DB *sqlx.DB
+	Conn *pgxpool.Pool
 }
 
 func (rs Resource) Routes() chi.Router {
@@ -42,12 +44,14 @@ type Image struct {
 }
 
 func (rs Resource) page(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	l := layout.FromContext(r.Context())
 
 	var images []Image
-	err := rs.DB.Select(&images, `select * from images where user_id = ? order by created_at desc`, l.User.ID)
+	err := pgxscan.Select(ctx, rs.Conn, &images, `select * from images where user_id = $1 order by created_at desc`, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("select * from images: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -79,13 +83,15 @@ func (rs Resource) search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs Resource) save(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user := auth.FromContext(r.Context())
 
 	url := r.FormValue("url")
 
 	img := Image{URL: url}
 
-	_, err := rs.DB.Exec(`insert into images(url, user_id) values(?,?)`, url, user.ID)
+	_, err := rs.Conn.Exec(ctx, `insert into images(url, user_id) values($1,$2)`, url, user.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

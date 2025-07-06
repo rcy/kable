@@ -1,14 +1,23 @@
 package quizzes
 
 import (
-	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+
+	"github.com/jackc/pgx/v5"
 )
+
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
 
 var (
 	//go:embed page.gohtml
@@ -16,14 +25,13 @@ var (
 	pageTemplate = layout.MustParse(pageContent)
 )
 
-func Page(w http.ResponseWriter, r *http.Request) {
+func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
-	queries := api.New(db.DB)
 
-	allQuizzes, err := queries.PublishedQuizzes(ctx)
-	if err != nil && err != sql.ErrNoRows {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+	allQuizzes, err := s.Queries.PublishedQuizzes(ctx)
+	if err != nil && err != pgx.ErrNoRows {
+		render.Error(w, fmt.Errorf("PublishedQuizzes: %w", err), http.StatusInternalServerError)
 		return
 	}
 

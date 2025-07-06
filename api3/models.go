@@ -2,23 +2,25 @@
 // versions:
 //   sqlc v1.29.0
 
-package api
+package api3
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"database/sql"
+	"time"
+
 	"oj/element/gradient"
 )
 
 type Attempt struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	QuizID    int64
 	UserID    int64
 }
 
 type Bot struct {
 	ID          int64
-	CreatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
 	OwnerID     int64
 	AssistantID string
 	Name        string
@@ -28,25 +30,25 @@ type Bot struct {
 
 type Code struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
-	Code      string
-	Nonce     string
+	CreatedAt time.Time
+	Code      interface{}
+	Nonce     interface{}
 	Email     string
 }
 
 type Delivery struct {
 	ID          int64
-	CreatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
 	MessageID   int64
 	RoomID      int64
 	RecipientID int64
 	SenderID    int64
-	SentAt      pgtype.Timestamptz
+	SentAt      sql.NullTime
 }
 
 type Friend struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	AID       int64
 	BID       int64
 	BRole     string
@@ -54,44 +56,48 @@ type Friend struct {
 
 type Gradient struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt string
 	UserID    int64
 	Gradient  gradient.Gradient
 }
 
 type Image struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
-	Url       string
-	UserID    int64
+	CreatedAt time.Time
+	Url       interface{}
+	UserID    interface{}
 }
 
 type KidsCode struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
-	Code      string
-	Nonce     string
+	CreatedAt time.Time
+	Code      interface{}
+	Nonce     interface{}
 	UserID    int64
 }
 
 type KidsParent struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	KidID     int64
 	ParentID  int64
 }
 
 type Message struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	SenderID  int64
-	RoomID    int64
+	RoomID    string
 	Body      string
+}
+
+type MigrationVersion struct {
+	Version sql.NullInt64
 }
 
 type Note struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	OwnerID   int64
 	Body      string
 	Published bool
@@ -99,7 +105,7 @@ type Note struct {
 
 type Postcard struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	Sender    int64
 	Recipient int64
 	Subject   string
@@ -109,7 +115,7 @@ type Postcard struct {
 
 type Question struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt string
 	QuizID    int64
 	Text      string
 	Answer    string
@@ -117,48 +123,44 @@ type Question struct {
 
 type Quiz struct {
 	ID          int64
-	CreatedAt   pgtype.Timestamptz
-	Name        string
-	Description string
+	CreatedAt   time.Time
+	Name        interface{}
+	Description interface{}
 	Published   bool
 }
 
 type Response struct {
 	ID         int64
-	CreatedAt  pgtype.Timestamptz
-	QuizID     int64
-	UserID     int64
-	AttemptID  int64
-	QuestionID int64
-	Text       string
+	CreatedAt  time.Time
+	QuizID     interface{}
+	UserID     interface{}
+	AttemptID  interface{}
+	QuestionID interface{}
+	Text       interface{}
 }
 
 type Room struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	Key       string
 }
 
 type RoomUser struct {
 	ID        int64
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 	RoomID    int64
 	UserID    int64
-}
-
-type SchemaVersion struct {
-	Version int32
 }
 
 type Session struct {
 	ID     int64
 	UserID int64
-	Key    string
+	Key    interface{}
 }
 
 type Thread struct {
 	ID          int64
-	CreatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
 	ThreadID    string
 	AssistantID string
 	UserID      int64
@@ -166,12 +168,12 @@ type Thread struct {
 
 type User struct {
 	ID           int64
-	CreatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
 	Username     string
-	Email        pgtype.Text
+	Email        sql.NullString
 	AvatarURL    string
 	IsParent     bool
 	Bio          string
-	BecomeUserID pgtype.Int8
+	BecomeUserID sql.NullInt64
 	Admin        bool
 }

@@ -1,29 +1,37 @@
 package show
 
 import (
-	"database/sql"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/quizctx"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
-func Router(r chi.Router) {
-	r.Use(quizctx.Provider)
-	r.Get("/", page)
-	r.Patch("/", patchQuiz)
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Router(r chi.Router) {
+	r.Use(quizctx.NewService(s.Queries).Provider)
+	r.Get("/", s.page)
+	r.Patch("/", s.patchQuiz)
 	r.Get("/edit", editQuiz)
-	r.Post("/toggle-published", togglePublished)
+	r.Post("/toggle-published", s.togglePublished)
 	r.Get("/add-question", newQuestion)
-	r.Post("/add-question", postNewQuestion)
-	r.Get("/question/{questionID}/edit", editQuestion)
-	r.Patch("/question/{questionID}", patchQuestion)
+	r.Post("/add-question", s.postNewQuestion)
+	r.Get("/question/{questionID}/edit", s.editQuestion)
+	r.Patch("/question/{questionID}", s.patchQuestion)
 }
 
 var (
@@ -32,15 +40,14 @@ var (
 	pageTemplate = layout.MustParse(pageContent, pageContent)
 )
 
-func page(w http.ResponseWriter, r *http.Request) {
+func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 	l := layout.FromContext(ctx)
 	quiz := quizctx.Value(ctx)
 
-	questions, err := queries.QuizQuestions(ctx, quiz.ID)
-	if err != nil && err != sql.ErrNoRows {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
+	if err != nil && err != pgx.ErrNoRows {
+		render.Error(w, fmt.Errorf("QuizQuestions: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -61,32 +68,33 @@ func editQuiz(w http.ResponseWriter, r *http.Request) {
 	render.ExecuteNamed(w, pageTemplate, "quiz-header-edit", quiz)
 }
 
-func patchQuiz(w http.ResponseWriter, r *http.Request) {
+func (s *service) patchQuiz(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	quiz := quizctx.Value(ctx)
-	queries := api.New(db.DB)
 
-	result, err := queries.UpdateQuiz(ctx, api.UpdateQuizParams{
+	result, err := s.Queries.UpdateQuiz(ctx, api.UpdateQuizParams{
 		ID:          quiz.ID,
 		Name:        r.FormValue("name"),
 		Description: r.FormValue("description"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateQuiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	render.ExecuteNamed(w, pageTemplate, "quiz-header", result)
 }
 
-func togglePublished(w http.ResponseWriter, r *http.Request) {
+func (s *service) togglePublished(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	quiz := quizctx.Value(r.Context())
-	queries := api.New(db.DB)
 
-	quiz, err := queries.SetQuizPublished(ctx, api.SetQuizPublishedParams{ID: quiz.ID, Published: !quiz.Published})
+	quiz, err := s.Queries.SetQuizPublished(ctx, api.SetQuizPublishedParams{
+		ID:        quiz.ID,
+		Published: !quiz.Published,
+	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("SetQuizPublished: %w", err), http.StatusInternalServerError)
 		return
 	}
 	render.ExecuteNamed(w, pageTemplate, "quiz-header", quiz)
@@ -98,24 +106,22 @@ func newQuestion(w http.ResponseWriter, r *http.Request) {
 	render.ExecuteNamed(w, pageTemplate, "new-question-form", struct{ QuizID int64 }{quiz.ID})
 }
 
-func editQuestion(w http.ResponseWriter, r *http.Request) {
+func (s *service) editQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	questionID, _ := strconv.Atoi(chi.URLParam(r, "questionID"))
 
-	quest, err := queries.Question(ctx, int64(questionID))
+	quest, err := s.Queries.Question(ctx, int64(questionID))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Question: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	render.ExecuteNamed(w, pageTemplate, "edit-question-form", quest)
 }
 
-func postNewQuestion(w http.ResponseWriter, r *http.Request) {
+func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	quiz := quizctx.Value(r.Context())
 
@@ -124,51 +130,52 @@ func postNewQuestion(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("id") != "" {
 		questionID, _ := strconv.Atoi(r.FormValue("id"))
-		_, err = queries.Question(ctx, int64(questionID))
-		if err != nil && err != sql.ErrNoRows {
-			render.Error(w, err.Error(), http.StatusNotFound)
+		_, err = s.Queries.Question(ctx, int64(questionID))
+		if err != nil && err != pgx.ErrNoRows {
+			render.Error(w, fmt.Errorf("Question: %w", err), http.StatusNotFound)
 			return
 		}
-		quest, err = queries.UpdateQuestion(r.Context(), api.UpdateQuestionParams{
+		quest, err = s.Queries.UpdateQuestion(r.Context(), api.UpdateQuestionParams{
 			ID:     int64(questionID),
 			Text:   r.FormValue("text"),
 			Answer: r.FormValue("answer"),
 		})
+		if err != nil {
+			render.Error(w, fmt.Errorf("UpdateQuestion: %w", err), http.StatusInternalServerError)
+			return
+		}
 	} else {
-		quest, err = queries.CreateQuestion(r.Context(), api.CreateQuestionParams{
+		quest, err = s.Queries.CreateQuestion(r.Context(), api.CreateQuestionParams{
 			QuizID: quiz.ID,
 			Text:   r.FormValue("text"),
 			Answer: r.FormValue("answer"),
 		})
-
-	}
-
-	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if err != nil {
+			render.Error(w, fmt.Errorf("CreateQuestion: %w", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	render.ExecuteNamed(w, pageTemplate, "question", quest)
 }
 
-func patchQuestion(w http.ResponseWriter, r *http.Request) {
+func (s *service) patchQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
 	questionID, _ := strconv.Atoi(chi.URLParam(r, "questionID"))
-	quest, err := queries.Question(ctx, int64(questionID))
+	quest, err := s.Queries.Question(ctx, int64(questionID))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusNotFound)
+		render.Error(w, fmt.Errorf("Question: %w", err), http.StatusNotFound)
 		return
 	}
 
-	quest, err = queries.UpdateQuestion(r.Context(), api.UpdateQuestionParams{
+	quest, err = s.Queries.UpdateQuestion(r.Context(), api.UpdateQuestionParams{
 		ID:     quest.ID,
 		Text:   r.FormValue("text"),
 		Answer: r.FormValue("answer"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateQuestion: %w", err), http.StatusInternalServerError)
 		return
 	}
 

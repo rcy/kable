@@ -2,17 +2,28 @@ package connect
 
 import (
 	_ "embed"
+	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"oj/worker"
 	"strconv"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type service struct {
+	Conn    *pgxpool.Pool
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
+	return &service{Queries: q, Conn: conn}
+}
 
 var (
 	//go:embed connect.gohtml
@@ -24,13 +35,12 @@ var (
 	t = layout.MustParse(pageContent, ConnectionContent)
 )
 
-func Connect(w http.ResponseWriter, r *http.Request) {
+func (s *service) Connect(w http.ResponseWriter, r *http.Request) {
 	lay := layout.FromContext(r.Context())
-	queries := api.New(db.DB)
 
-	connections, err := queries.GetCurrentAndPotentialParentConnections(r.Context(), lay.User.ID)
+	connections, err := s.Queries.GetCurrentAndPotentialParentConnections(r.Context(), lay.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetCurrentAndPotentialParentConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -43,31 +53,29 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func PutParentFriend(w http.ResponseWriter, r *http.Request) {
+func (s *service) PutParentFriend(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	currentUser := auth.FromContext(ctx)
-	queries := api.New(db.DB)
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
-	user, err := queries.ParentByID(ctx, int64(userID))
+	user, err := s.Queries.ParentByID(ctx, int64(userID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	result, err := db.DB.Exec(`insert into friends(a_id, b_id, b_role) values(?,?,'friend')`, currentUser.ID, user.ID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	friendID, err := result.LastInsertId()
+	var friendID int64
+	err = pgxscan.Get(ctx, s.Conn, &friendID, `insert into friends(a_id, b_id, b_role) values($1,$2,'friend') returning id`, currentUser.ID, user.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	go worker.NotifyFriend(friendID)
 
-	connection, err := queries.GetConnection(ctx, api.GetConnectionParams{AID: currentUser.ID, ID: user.ID})
+	connection, err := s.Queries.GetConnection(ctx, api.GetConnectionParams{
+		AID: currentUser.ID,
+		ID:  user.ID,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -77,28 +85,30 @@ func PutParentFriend(w http.ResponseWriter, r *http.Request) {
 	render.ExecuteNamed(w, t, "connection", connection)
 }
 
-func DeleteParentFriend(w http.ResponseWriter, r *http.Request) {
+func (s *service) DeleteParentFriend(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	currentUser := auth.FromContext(ctx)
-	queries := api.New(db.DB)
 
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
-	user, err := queries.ParentByID(ctx, int64(userID))
+	user, err := s.Queries.ParentByID(ctx, int64(userID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	_, err = db.DB.Exec(`delete from friends where a_id = $1 and b_id = $2`, currentUser.ID, user.ID)
+	_, err = s.Conn.Exec(ctx, `delete from friends where a_id = $1 and b_id = $2`, currentUser.ID, user.ID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("delete from friends: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	connection, err := queries.GetConnection(ctx, api.GetConnectionParams{AID: currentUser.ID, ID: int64(user.ID)})
+	connection, err := s.Queries.GetConnection(ctx, api.GetConnectionParams{
+		AID: currentUser.ID,
+		ID:  int64(user.ID)},
+	)
 	if err != nil {
-		render.Error(w, "xxx"+err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("GetConnection: %w", err), http.StatusInternalServerError)
 		return
 	}
 

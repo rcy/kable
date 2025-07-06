@@ -69,7 +69,7 @@ func (rs Resource) listPage(w http.ResponseWriter, r *http.Request) {
 
 	botRows, err := rs.Model.AllBots(ctx)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AllBots: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (rs Resource) postCreate(w http.ResponseWriter, r *http.Request) {
 		Instructions: &instructions,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateAssistant: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (rs Resource) postCreate(w http.ResponseWriter, r *http.Request) {
 		Description: instructions, // TODO: replace this with text from the bot introducing itself
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateBot: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
 		Description: instructions,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UpdateBotDescription: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -186,7 +186,7 @@ func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
 		Instructions: &instructions,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("ModifyAssistant: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -219,7 +219,7 @@ func (rs Resource) chatRedirectPage(w http.ResponseWriter, r *http.Request) {
 		AssistantID: bot.AssistantID,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("AssistantThreads: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (rs Resource) chatRedirectPage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		thread, err := rs.AI.CreateThread(ctx, openai.ThreadRequest{})
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("CreateThread: %w", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -239,7 +239,7 @@ func (rs Resource) chatRedirectPage(w http.ResponseWriter, r *http.Request) {
 			UserID:      user.ID,
 		})
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("CreateThread: %w", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -259,19 +259,19 @@ func (rs Resource) chatPage(w http.ResponseWriter, r *http.Request) {
 		ThreadID: chi.URLParam(r, "threadID"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("UserThreadByID: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	thread, err := rs.AI.RetrieveThread(ctx, userThread.ThreadID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("RetrieveThread: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	messagesList, err := rs.AI.ListMessage(ctx, thread.ID, nil, strptr("desc"), nil, nil, nil)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("ListMessage: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -307,7 +307,7 @@ func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 		Content: content,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("CreateMessage: %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 		AssistantID: bot.AssistantID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("CreateRun: %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -337,7 +337,7 @@ func (rs Resource) getRunStatus(w http.ResponseWriter, r *http.Request) {
 
 	run, err := rs.AI.RetrieveRun(ctx, chi.URLParam(r, "threadID"), chi.URLParam(r, "runID"))
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("RetrieveRun: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -357,7 +357,7 @@ func (rs Resource) getRunStatus(w http.ResponseWriter, r *http.Request) {
 
 		thread, err := rs.AI.RetrieveThread(ctx, run.ThreadID)
 		if err != nil {
-			render.Error(w, err.Error(), http.StatusInternalServerError)
+			render.Error(w, fmt.Errorf("RetrieveThread: %w", err), http.StatusInternalServerError)
 			return
 		}
 

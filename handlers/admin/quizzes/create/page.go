@@ -5,16 +5,23 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/db"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(r chi.Router) {
+type service struct {
+	Queries *api.Queries
+}
+
+func NewService(q *api.Queries) *service {
+	return &service{Queries: q}
+}
+
+func (s *service) Router(r chi.Router) {
 	r.Get("/", page)
-	r.Post("/", post)
+	r.Post("/", s.post)
 }
 
 var (
@@ -33,16 +40,15 @@ func page(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func post(w http.ResponseWriter, r *http.Request) {
+func (s *service) post(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	queries := api.New(db.DB)
 
-	quiz, err := queries.CreateQuiz(ctx, api.CreateQuizParams{
+	quiz, err := s.Queries.CreateQuiz(ctx, api.CreateQuizParams{
 		Name:        r.FormValue("name"),
 		Description: r.FormValue("description"),
 	})
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("CreateQuiz: %w", err), http.StatusInternalServerError)
 		return
 	}
 

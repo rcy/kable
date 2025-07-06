@@ -1,9 +1,9 @@
 package parent
 
 import (
-	"database/sql"
 	_ "embed"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"oj/api"
@@ -13,12 +13,13 @@ import (
 	"oj/services/family"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 )
 
 type Resource struct {
-	DB    *sqlx.DB
-	Model *api.Queries
+	DB      *sqlx.DB
+	Queries *api.Queries
 }
 
 func (rs Resource) Routes() chi.Router {
@@ -41,9 +42,9 @@ func (rs Resource) index(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
 
-	kids, err := rs.Model.KidsByParentID(ctx, l.User.ID)
+	kids, err := rs.Queries.KidsByParentID(ctx, l.User.ID)
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("KidsByParentID: %w", err), 500)
 		return
 	}
 
@@ -57,7 +58,7 @@ func (rs Resource) index(w http.ResponseWriter, r *http.Request) {
 		Kids:   kids,
 	})
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("Execute: %w", err), 500)
 	}
 }
 
@@ -67,16 +68,16 @@ func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 		return
 	}
 	username := r.PostForm.Get("username")
 
-	_, err = rs.Model.UserByUsername(ctx, username)
-	if errors.Is(err, sql.ErrNoRows) {
-		kid, err := family.CreateKid(ctx, user.ID, username)
+	_, err = rs.Queries.UserByUsername(ctx, username)
+	if errors.Is(err, pgx.ErrNoRows) {
+		kid, err := family.CreateKid(ctx, rs.Queries, user.ID, username)
 		if err != nil {
-			render.Error(w, err.Error(), 500)
+			render.Error(w, fmt.Errorf("CreateKid: %w", err), 500)
 			return
 		}
 		log.Printf("kid: %v", kid)
@@ -85,11 +86,11 @@ func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		render.Error(w, err.Error(), 500)
+		render.Error(w, fmt.Errorf("UserByUsername: %w", err), 500)
 		return
 	}
 
-	render.Error(w, "username taken", http.StatusConflict)
+	render.Error(w, fmt.Errorf("username taken"), http.StatusConflict)
 	return
 }
 
@@ -97,7 +98,7 @@ func (rs Resource) deleteKid(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 	tx, err := rs.DB.Beginx()
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Beginx: %w", err), http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -114,13 +115,13 @@ delete from sessions where user_id = ?;
 delete from users where id = ?;
 `, userID, userID, userID, userID, userID, userID, userID, userID, userID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("delete delete delete: %w", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("Commit: %w", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -128,9 +129,9 @@ delete from users where id = ?;
 func (rs Resource) logoutKid(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 
-	_, err := rs.DB.Exec(`delete from sessions where user_id = ?`, userID)
+	_, err := rs.DB.Exec(`delete from sessions where user_id = $1`, userID)
 	if err != nil {
-		render.Error(w, err.Error(), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("delete from sessions: %w", err), http.StatusInternalServerError)
 		return
 	}
 }

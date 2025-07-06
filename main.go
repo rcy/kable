@@ -9,22 +9,32 @@ import (
 	"os"
 	"time"
 
-	"oj/db"
+	"oj/api"
 	"oj/handlers"
 	"oj/handlers/eventsource"
 	"oj/services/email"
 	"oj/worker"
 
 	"github.com/alexandrevicenzi/go-sse"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
-	err := db.DB.Ping()
-	if err != nil {
-		log.Fatalf("could not ping db: %s", err)
-	}
+	ctx := context.Background()
 
-	err = worker.Start(context.Background())
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %s", err)
+	}
+	defer pool.Close()
+
+	// conn, err := pool.Acquire(ctx)
+	// if err != nil {
+	// 	log.Fatalf("Could not aquire connection", err)
+	// }
+	// defer conn.Release()
+
+	err = worker.Start(context.Background(), api.New(pool), pool)
 	if err != nil {
 		log.Fatalf("could not start worker: %s", err)
 	}
@@ -50,7 +60,7 @@ func main() {
 		port = "8080"
 	}
 
-	handler := handlers.Router(db.DB)
+	handler := handlers.Router(pool)
 
 	log.Printf("listening on port %s", port)
 	err = http.ListenAndServe(":"+port, handler)
