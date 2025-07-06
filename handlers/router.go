@@ -12,7 +12,6 @@ import (
 	"oj/internal/app"
 	"oj/internal/middleware/auth"
 	"oj/internal/middleware/become"
-	"oj/internal/middleware/redirect"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -34,7 +33,7 @@ func Router(conn *pgxpool.Pool) *chi.Mux {
 	r.Route("/", func(r chi.Router) {
 		r.Use(auth.NewService(queries).Provider)
 		r.Use(become.NewService(queries).Provider)
-		r.Use(redirect.Redirect)
+		//r.Use(redirect.Redirect)
 		r.Use(layout.NewService(queries, conn).Provider)
 		r.Mount("/", app.Service{Conn: conn, Queries: queries}.Routes())
 		r.Mount("/admin", admin.NewService(queries, conn).Routes())
