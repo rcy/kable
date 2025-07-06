@@ -3,12 +3,11 @@ package app
 import (
 	"net/http"
 	"net/http/httptest"
-	"oj/db"
 	"testing"
 )
 
 func TestApplicationRouter(t *testing.T) {
-	routes := Service{DB: db.DB}.Routes()
+	routes := NewService(nil, nil).Routes()
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
