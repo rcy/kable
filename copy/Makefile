@@ -1,6 +1,6 @@
 .DEFAULT_GOAL:=all
 
-DATABASE_URL?=postgres://appuser:appuser@localhost:2017/kable_development
+export PGSERVICE?=local
 
 oj_production.db:
 	fly -a octopusjr ssh sftp get /data/$@
@@ -36,8 +36,8 @@ all: $(patsubst %,%.copy,$(TABLES))
 
 .PHONY: %.copy
 %.copy: %.csv
-	echo "\copy $* FROM '$<' WITH (FORMAT csv, HEADER true);" | psql ${DATABASE_URL} -v ON_ERROR_STOP=1
-	echo "SELECT setval(pg_get_serial_sequence('$*', 'id'), (SELECT MAX(id) FROM $*));" | psql ${DATABASE_URL} -v ON_ERROR_STOP=1
+	echo "\copy $* FROM '$<' WITH (FORMAT csv, HEADER true);" | psql -v ON_ERROR_STOP=1
+	echo "SELECT setval(pg_get_serial_sequence('$*', 'id'), (SELECT MAX(id) FROM $*));" | psql -v ON_ERROR_STOP=1
 
 clean:
 	rm -rf *.csv

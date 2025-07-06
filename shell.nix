@@ -17,5 +17,5 @@ with nixpkgs; mkShell {
   ];
 
   DOCKER_CLI_HINTS="false";
-  PGSERVICEFILE="pg-service.conf";
+  PGSERVICEFILE="${builtins.toString ./.}/pg-service.conf";
 }

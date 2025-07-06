@@ -12,7 +12,7 @@ services:
       - MINIO_DEFAULT_BUCKETS=bucket
 
   postgres:
-    image: postgres:15
+    image: postgres:17
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
