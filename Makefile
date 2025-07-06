@@ -50,3 +50,10 @@ migrate:
 
 migrate.%:
 	cd migrations && tern migrate -d $*
+
+compose-up:
+	docker compose up -d
+compose-stop:
+	docker compose stop
+compose-down:
+	docker compose down
