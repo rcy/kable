@@ -146,10 +146,6 @@ type RoomUser struct {
 	UserID    int64
 }
 
-type SchemaVersion struct {
-	Version int32
-}
-
 type Session struct {
 	ID     int64
 	UserID int64
@@ -174,4 +170,5 @@ type User struct {
 	Bio          string
 	BecomeUserID pgtype.Int8
 	Admin        bool
+	Gradient     gradient.Gradient
 }

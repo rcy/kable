@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"math/rand"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -43,7 +45,7 @@ var (
 		Colors:    []string{"#ff0000", "#000000"},
 		Positions: []int{0, 50},
 	}
-	Default = Neon
+	Default = Grayscale
 	Admin   = RedBlack
 )
 
@@ -91,11 +93,17 @@ func (g Gradient) Stops() []stop {
 
 // Render the gradient as a css value
 func (g Gradient) Render() template.CSS {
+	if g.Type == "" {
+		return Default.Render()
+	}
 	return g.render(g.Type, g.Repeat, g.Degrees, g.Stops())
 }
 
 // Render a gradient as a css value that can be used as a horizontal slider bar
 func (g Gradient) RenderBar() template.CSS {
+	if g.Type == "" {
+		return Default.RenderBar()
+	}
 	return g.render("linear", false, 90, g.Stops())
 }
 
@@ -143,4 +151,33 @@ func (g Gradient) render(gradientType string, repeating bool, deg int, stops []s
 	default:
 		return template.CSS("black")
 	}
+}
+
+// Return a Gradient from a parsed form
+func NewFromURLValues(f url.Values) (Gradient, error) {
+	gradientType := f.Get("gradientType")
+	repeat := f.Get("repeat") == "on"
+	colors := f["color"]
+
+	// convert []string to []int
+	positions := make([]int, len(f["percent"]))
+	for i, p := range f["percent"] {
+		positions[i], _ = strconv.Atoi(p)
+	}
+
+	if len(colors) != len(positions) {
+		return Gradient{}, fmt.Errorf("colors/positions length mismatch")
+	}
+
+	degrees, err := strconv.Atoi(f.Get("degrees"))
+	if err != nil {
+		return Gradient{}, err
+	}
+	return Gradient{
+		Type:      gradientType,
+		Repeat:    repeat,
+		Degrees:   degrees,
+		Colors:    colors,
+		Positions: positions,
+	}, nil
 }

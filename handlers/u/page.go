@@ -9,7 +9,6 @@ import (
 	"oj/handlers/layout"
 	"oj/handlers/me"
 	"oj/handlers/render"
-	"oj/services/background"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -43,13 +42,8 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ug, err := background.ForUser(ctx, s.Queries, pageUser.ID)
-	if err != nil {
-		render.Error(w, fmt.Errorf("ForUser: %w", err), http.StatusInternalServerError)
-		return
-	}
 	// override layout gradient to show the page user's not the request user's
-	l.BackgroundGradient = *ug
+	l.BackgroundGradient = pageUser.Gradient
 
 	connection, err := s.Queries.GetConnection(ctx, api.GetConnectionParams{
 		AID: l.User.ID,

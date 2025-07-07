@@ -180,10 +180,12 @@ func unreadFriend(friend api.UsersWithUnreadCountsRow) g.Node {
 }
 
 func friendCard(friend api.User) g.Node {
-	return h.Div(h.Style("background: rgba(255,255,255,.5)"),
-		h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
-			h.Img(h.Width("128px"), h.Src(friend.AvatarURL)),
-			h.Div(g.Text(shorten(friend.Username, 8)))))
+	return h.Div(
+		h.Div(h.Style("background: "+string(friend.Gradient.Render())),
+			h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
+				h.Img(h.Width("128px"), h.Src(friend.AvatarURL)))),
+		h.Div(h.Style("background: white"),
+			g.Text(shorten(friend.Username, 8))))
 }
 
 // Return first n characters of text

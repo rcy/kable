@@ -28,7 +28,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
 
-	family, err := s.Queries.GetFamilyWithGradient(ctx, l.User.ID)
+	family, err := s.Queries.GetFamily(ctx, l.User.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("GetFamilyWithGradient: %w", err), http.StatusInternalServerError)
 		return
@@ -37,7 +37,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	d := struct {
 		Layout layout.Data
 		User   api.User
-		Family []api.GetFamilyWithGradientRow
+		Family []api.User
 	}{
 		Layout: l,
 		User:   l.User,

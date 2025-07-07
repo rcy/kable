@@ -108,9 +108,6 @@ insert into attempts(quiz_id, user_id) values(@quiz_id,@user_id) returning *;
 -- name: Delivery :one
 select * from deliveries where id = @id;
 
--- name: UserGradient :one
-select * from gradients where user_id = @user_id order by created_at desc limit 1;
-
 -- name: Question :one
 select * from questions where id = @id;
 
@@ -205,34 +202,12 @@ join friends f1 on f1.b_id = u.id and f1.a_id = @a_id
 join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
 where f1.b_role <> '' and f2.b_role <> '';
 
--- name: GetFriendsWithGradient :many
-select u.*, g.gradient, max(g.created_at)
+-- name: GetFamily :many
+select u.*
 from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = @a_id
 join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
-left outer join gradients g
-on g.user_id = f1.b_id
-where f1.b_role = 'friend'
-group by u.id;
-
--- name: GetFamilyWithGradient :many
-select u.*, g.gradient, max(g.created_at)
-from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = @a_id
-join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
-left outer join gradients g
-on g.user_id = f1.b_id
-where f1.b_role <> 'friend'
-group by u.id;
-
--- name: GetConnectionsWithGradientDeprecated :many
-select u.*, g.gradient, max(g.created_at)
-from users u
-join friends f1 on f1.b_id = u.id and f1.a_id = @a_id
-join friends f2 on f2.a_id = u.id and f2.b_id = @a_id
-left outer join gradients g
-on g.user_id = f1.b_id
-group by u.id;
+where f1.b_role <> 'friend';
 
 -- name: GetKids :many
 select u.* from users u
@@ -303,3 +278,8 @@ update notes set body = @body where id = @id and owner_id = @owner_id returning 
 -- name: DeleteNote :exec
 delete from notes where id = @id and owner_id = @owner_id;
 
+-- name: InsertGradient :one
+insert into gradients(user_id, gradient) values(@user_id, @gradient) returning *;
+
+-- name: UpdateUserGradient :one
+update users set gradient = $1 where id = @user_id returning *;
