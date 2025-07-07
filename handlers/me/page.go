@@ -37,65 +37,54 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	friends, err := s.Queries.GetConnections(ctx, l.User.ID)
+	if err != nil {
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
+		return
+	}
+
 	layout.Layout(l,
 		l.User.Username,
-		h.Div(
-			h.Style("display:flex;flex-direction:column;gap:1em;"),
-			h.Div(
-				h.Style("display:flex; flex-direction:column; gap: 5em;"),
-				myPage(l.User),
-			),
+		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
+			h.Section(profile(l.User)),
+
 			h.Section(
 				h.Style("display:flex; flex-direction:column; gap: 1em"),
 				g.Map(unreadUsers, func(friend api.UsersWithUnreadCountsRow) g.Node {
 					return unreadFriend(friend)
 				}),
 			),
+
+			h.Section(
+				h.Div(h.Style("display:flex; flex-wrap: wrap; justify-content: space-between; gap: 1em"),
+					g.Map(friends, friendCard)),
+			),
+
 			h.Div(
 				h.Style("margin-bottom: 50vh"),
+			),
+
+			h.Section(
+				h.Style("display:flex; gap: 1em"),
+				h.A(
+					g.Attr("onclick", "return confirm('really logout?')"),
+					h.Href("/welcome/signout"),
+					h.Class("nes-btn"),
+					g.Text("Logout"),
+				),
+				g.If(l.User.Admin,
+					h.A(
+						h.Href("/admin"),
+						h.Class("nes-btn is-error"),
+						g.Text("Admin"),
+					),
+				),
 			),
 		)).Render(w)
 }
 
-func myPage(user api.User) g.Node {
-	return h.Section(
-		h.Style("display:flex; flex-direction:column; gap: 1em"),
-		h.Div(
-			h.Style("display:flex; justify-content: space-between; align-items: center"),
-			h.H1(
-				h.Style("text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;"),
-				g.Text("My Page"),
-			),
-			h.A(
-				h.Href("/me/edit"),
-				h.Class("nes-btn is-primary"),
-				g.Text("Edit My Profile"),
-			),
-		),
-		h.Div(
-			h.Style("display:flex; flex-direction: column; gap: 1em"),
-			card(user),
-		),
-		h.Div(
-			h.A(
-				g.Attr("onclick", "return confirm('really logout?')"),
-				h.Href("/welcome/signout"),
-				h.Class("nes-btn"),
-				g.Text("Logout"),
-			),
-			g.If(user.Admin,
-				h.A(
-					h.Href("/admin"),
-					h.Class("nes-btn"),
-					g.Text("Admin"),
-				),
-			),
-		),
-	)
-}
-
-func card(user api.User) g.Node {
-	return h.Section(
+func profile(user api.User) g.Node {
+	return h.Div(
 		h.ID("card"),
 		h.Class("nes-container ghost"),
 		g.Attr("hx-swap", "outerHTML"),
@@ -119,15 +108,11 @@ func card(user api.User) g.Node {
 					),
 				),
 			),
-			g.If(user.IsParent,
-				h.Div(
-					h.Class("nes-badge"),
-					h.Span(
-						h.Class("is-primary"),
-						g.Text("parent"),
-					),
-				),
-			),
+			h.Div(h.A(
+				h.Href("/me/edit"),
+				h.Class("nes-btn is-primary"),
+				g.Text("Edit My Profile"),
+			)),
 		),
 		about(user),
 	)
@@ -192,4 +177,19 @@ func unreadFriend(friend api.UsersWithUnreadCountsRow) g.Node {
 			),
 		),
 	)
+}
+
+func friendCard(friend api.User) g.Node {
+	return h.Div(h.Style("background: rgba(255,255,255,.5)"),
+		h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
+			h.Img(h.Width("128px"), h.Src(friend.AvatarURL)),
+			h.Div(g.Text(shorten(friend.Username, 8)))))
+}
+
+// Return first n characters of text
+func shorten(text string, n int) string {
+	if len(text) < n {
+		return text
+	}
+	return text[:n]
 }
