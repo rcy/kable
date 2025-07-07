@@ -10,10 +10,10 @@ build:
 	go build .
 
 sql:
-	sqlite3 ${SQLITE_DB}
+	psql service=local
 
-psql:
-	psql postgres://appuser:appuser@localhost:2017/kable_development
+sql.prod:
+	psql service=prod
 
 version.%:
 	echo "update migration_version set version = $*" | sqlite3 ${SQLITE_DB}

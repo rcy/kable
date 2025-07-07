@@ -25,7 +25,7 @@ notes \
 postcards \
 questions \
 responses \
-rooms \
+room_users \
 sessions \
 threads
 
