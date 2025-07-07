@@ -6,6 +6,7 @@ package api
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
+	"oj/avatar"
 	"oj/gradient"
 )
 
@@ -171,4 +172,5 @@ type User struct {
 	BecomeUserID pgtype.Int8
 	Admin        bool
 	Gradient     gradient.Gradient
+	Avatar       avatar.Avatar
 }
