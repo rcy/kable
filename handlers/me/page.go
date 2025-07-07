@@ -37,6 +37,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	friends, err := s.Queries.GetConnections(ctx, l.User.ID)
+	if err != nil {
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
+		return
+	}
+
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
@@ -47,6 +53,11 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				g.Map(unreadUsers, func(friend api.UsersWithUnreadCountsRow) g.Node {
 					return unreadFriend(friend)
 				}),
+			),
+
+			h.Section(
+				h.Div(h.Style("display:flex; flex-wrap: wrap; justify-content: space-between; gap: 1em"),
+					g.Map(friends, friendCard)),
 			),
 
 			h.Div(
@@ -166,4 +177,19 @@ func unreadFriend(friend api.UsersWithUnreadCountsRow) g.Node {
 			),
 		),
 	)
+}
+
+func friendCard(friend api.User) g.Node {
+	return h.Div(h.Style("background: rgba(255,255,255,.5)"),
+		h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
+			h.Img(h.Width("128px"), h.Src(friend.AvatarURL)),
+			h.Div(g.Text(shorten(friend.Username, 8)))))
+}
+
+// Return first n characters of text
+func shorten(text string, n int) string {
+	if len(text) < n {
+		return text
+	}
+	return text[:n]
 }
