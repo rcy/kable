@@ -15,7 +15,7 @@ func Layout(data Data, title string, main g.Node) g.Node {
 			h.TitleEl(g.Text(title)),
 			h.Meta(
 				h.Name("htmx-config"),
-				h.Content("{\"disableInheritance\": true}"),
+				h.Content(`{"disableInheritance": true}`),
 			),
 			h.Script(
 				h.Src("https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"),
@@ -46,8 +46,16 @@ func Layout(data Data, title string, main g.Node) g.Node {
 		h.Body(
 			h.Style("height: 100%"),
 			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
-			h.Script(
-				g.Text("(function(){\n        const es = new EventSource(\"/es/user-{{.Layout.User.ID}}\");\n\n        es.addEventListener(\"USER_UPDATE\", (e) => {\n          document.getElementsByTagName('body')[0].dispatchEvent(new Event(\"USER_UPDATE\"))\n        })\n\n        window.addEventListener('beforeunload', function(e) {\n          es.close();\n        })\n      })();"),
+			h.Script(g.Raw(fmt.Sprintf(`
+(function(){
+  const es = new EventSource("/es/user-%d");
+  es.addEventListener("USER_UPDATE", (e) => {
+    document.getElementsByTagName('body')[0].dispatchEvent(new Event("USER_UPDATE"))
+  });
+  window.addEventListener('beforeunload', function(e) {
+    es.close();
+  });
+})();`, data.User.ID)),
 			),
 			h.Audio(
 				h.ID("beeper"),
