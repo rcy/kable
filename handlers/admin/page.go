@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/element/gradient"
+	"oj/gradient"
 	"oj/handlers/admin/messages"
 	"oj/handlers/admin/middleware/auth"
 	"oj/handlers/admin/middleware/background"

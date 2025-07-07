@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"oj/element/gradient"
+	"oj/gradient"
 )
 
 const adminDeleteMessage = `-- name: AdminDeleteMessage :one
