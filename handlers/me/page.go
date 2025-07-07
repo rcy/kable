@@ -49,7 +49,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				}),
 			),
 
+			h.Div(
+				h.Style("margin-bottom: 50vh"),
+			),
+
 			h.Section(
+				h.Style("display:flex; gap: 1em"),
 				h.A(
 					g.Attr("onclick", "return confirm('really logout?')"),
 					h.Href("/welcome/signout"),
@@ -59,14 +64,10 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				g.If(l.User.Admin,
 					h.A(
 						h.Href("/admin"),
-						h.Class("nes-btn"),
+						h.Class("nes-btn is-error"),
 						g.Text("Admin"),
 					),
 				),
-			),
-
-			h.Div(
-				h.Style("margin-bottom: 50vh"),
 			),
 		)).Render(w)
 }
