@@ -184,7 +184,7 @@ func friendCard(friend api.User) g.Node {
 		h.Div(h.Style("background: "+string(friend.Gradient.Render())),
 			h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
 				h.Img(h.Width("128px"), h.Src(friend.AvatarURL)))),
-		h.Div(h.Style("background: white"),
+		h.Div(h.Style("background: black; color: white"),
 			g.Text(shorten(friend.Username, 8))))
 }
 
