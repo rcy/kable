@@ -46,15 +46,10 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 					h.Style("text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;"),
 					g.Text("My Page"),
 				),
-				h.A(
-					h.Href("/me/edit"),
-					h.Class("nes-btn is-primary"),
-					g.Text("Edit My Profile"),
-				),
 			),
 
 			h.Section(
-				card(l.User),
+				profile(l.User),
 			),
 
 			h.Section(
@@ -85,7 +80,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		)).Render(w)
 }
 
-func card(user api.User) g.Node {
+func profile(user api.User) g.Node {
 	return h.Div(
 		h.ID("card"),
 		h.Class("nes-container ghost"),
@@ -110,15 +105,11 @@ func card(user api.User) g.Node {
 					),
 				),
 			),
-			g.If(user.IsParent,
-				h.Div(
-					h.Class("nes-badge"),
-					h.Span(
-						h.Class("is-primary"),
-						g.Text("parent"),
-					),
-				),
-			),
+			h.Div(h.A(
+				h.Href("/me/edit"),
+				h.Class("nes-btn is-primary"),
+				g.Text("Edit My Profile"),
+			)),
 		),
 		about(user),
 	)
