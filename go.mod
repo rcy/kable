@@ -19,6 +19,7 @@ require (
 	github.com/sashabaranov/go-openai v1.40.3
 	github.com/yuin/goldmark v1.4.13
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
+	maragu.dev/gomponents v1.1.0
 	mvdan.cc/xurls/v2 v2.5.0
 )
 
