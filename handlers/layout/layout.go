@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"oj/api"
-	"oj/element/gradient"
+	"oj/gradient"
 	"oj/templatehelpers"
 
 	"github.com/georgysavva/scany/v2/pgxscan"

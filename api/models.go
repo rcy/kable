@@ -6,7 +6,7 @@ package api
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
-	"oj/element/gradient"
+	"oj/gradient"
 )
 
 type Attempt struct {

@@ -2,7 +2,7 @@ package background
 
 import (
 	"net/http"
-	"oj/element/gradient"
+	"oj/gradient"
 	"oj/handlers/layout"
 )
 

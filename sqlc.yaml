@@ -13,6 +13,6 @@ sql:
           avatar_url: "AvatarURL"
         overrides:
           - column: "gradients.gradient"
-            go_type: "oj/element/gradient.Gradient"
+            go_type: "oj/gradient.Gradient"
           - column: "users.gradient"
-            go_type: "oj/element/gradient.Gradient"
+            go_type: "oj/gradient.Gradient"
