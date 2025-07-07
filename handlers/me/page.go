@@ -40,16 +40,13 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
-			h.Header(
-				h.Style("display:flex; justify-content: space-between; align-items: center"),
-				h.H1(
-					h.Style("text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;"),
-					g.Text("My Page"),
-				),
-			),
+			h.Section(profile(l.User)),
 
 			h.Section(
-				profile(l.User),
+				h.Style("display:flex; flex-direction:column; gap: 1em"),
+				g.Map(unreadUsers, func(friend api.UsersWithUnreadCountsRow) g.Node {
+					return unreadFriend(friend)
+				}),
 			),
 
 			h.Section(
@@ -68,12 +65,6 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				),
 			),
 
-			h.Section(
-				h.Style("display:flex; flex-direction:column; gap: 1em"),
-				g.Map(unreadUsers, func(friend api.UsersWithUnreadCountsRow) g.Node {
-					return unreadFriend(friend)
-				}),
-			),
 			h.Div(
 				h.Style("margin-bottom: 50vh"),
 			),
