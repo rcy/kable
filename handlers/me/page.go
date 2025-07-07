@@ -39,12 +39,40 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	layout.Layout(l,
 		l.User.Username,
-		h.Div(
-			h.Style("display:flex;flex-direction:column;gap:1em;"),
-			h.Div(
-				h.Style("display:flex; flex-direction:column; gap: 5em;"),
-				myPage(l.User),
+		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
+			h.Header(
+				h.Style("display:flex; justify-content: space-between; align-items: center"),
+				h.H1(
+					h.Style("text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;"),
+					g.Text("My Page"),
+				),
+				h.A(
+					h.Href("/me/edit"),
+					h.Class("nes-btn is-primary"),
+					g.Text("Edit My Profile"),
+				),
 			),
+
+			h.Section(
+				card(l.User),
+			),
+
+			h.Section(
+				h.A(
+					g.Attr("onclick", "return confirm('really logout?')"),
+					h.Href("/welcome/signout"),
+					h.Class("nes-btn"),
+					g.Text("Logout"),
+				),
+				g.If(l.User.Admin,
+					h.A(
+						h.Href("/admin"),
+						h.Class("nes-btn"),
+						g.Text("Admin"),
+					),
+				),
+			),
+
 			h.Section(
 				h.Style("display:flex; flex-direction:column; gap: 1em"),
 				g.Map(unreadUsers, func(friend api.UsersWithUnreadCountsRow) g.Node {
@@ -57,45 +85,8 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		)).Render(w)
 }
 
-func myPage(user api.User) g.Node {
-	return h.Section(
-		h.Style("display:flex; flex-direction:column; gap: 1em"),
-		h.Div(
-			h.Style("display:flex; justify-content: space-between; align-items: center"),
-			h.H1(
-				h.Style("text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;"),
-				g.Text("My Page"),
-			),
-			h.A(
-				h.Href("/me/edit"),
-				h.Class("nes-btn is-primary"),
-				g.Text("Edit My Profile"),
-			),
-		),
-		h.Div(
-			h.Style("display:flex; flex-direction: column; gap: 1em"),
-			card(user),
-		),
-		h.Div(
-			h.A(
-				g.Attr("onclick", "return confirm('really logout?')"),
-				h.Href("/welcome/signout"),
-				h.Class("nes-btn"),
-				g.Text("Logout"),
-			),
-			g.If(user.Admin,
-				h.A(
-					h.Href("/admin"),
-					h.Class("nes-btn"),
-					g.Text("Admin"),
-				),
-			),
-		),
-	)
-}
-
 func card(user api.User) g.Node {
-	return h.Section(
+	return h.Div(
 		h.ID("card"),
 		h.Class("nes-container ghost"),
 		g.Attr("hx-swap", "outerHTML"),
