@@ -37,8 +37,6 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("unreadUsers", unreadUsers)
-
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(

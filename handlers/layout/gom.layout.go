@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"fmt"
 	"oj/api"
 
 	g "maragu.dev/gomponents"
@@ -44,19 +45,7 @@ func Layout(data Data, title string, main g.Node) g.Node {
 		),
 		h.Body(
 			h.Style("height: 100%"),
-			h.StyleEl(
-				g.Text("html, body, pre, code, kbd, samp {\n         font-family: 'Press Start 2P';\n     }"),
-			),
-			h.StyleEl(
-				h.ID("user-style"),
-				g.Text("body {\n         background: {{.Layout.BackgroundGradient.Render}}\n     }"),
-			),
-			h.StyleEl(
-				g.Text(".ghost {\n         background:rgba(255,255,255,1.0);\n     }"),
-			),
-			h.StyleEl(
-				g.Text("body {\n         height: 100vh;\n     }\n     header a {\n         color: inherit;\n     }\n     header a:hover {\n         color: cyan;\n     }"),
-			),
+			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Script(
 				g.Text("(function(){\n        const es = new EventSource(\"/es/user-{{.Layout.User.ID}}\");\n\n        es.addEventListener(\"USER_UPDATE\", (e) => {\n          document.getElementsByTagName('body')[0].dispatchEvent(new Event(\"USER_UPDATE\"))\n        })\n\n        window.addEventListener('beforeunload', function(e) {\n          es.close();\n        })\n      })();"),
 			),
@@ -77,6 +66,29 @@ func Layout(data Data, title string, main g.Node) g.Node {
 			),
 		),
 	)
+}
+
+func style(background string) string {
+	return fmt.Sprintf(`
+html, body, pre, code, kbd, samp {
+         font-family: 'Press Start 2P';
+}
+body {
+         background: %s;
+}
+.ghost {
+	background:rgba(255,255,255,1.0);
+}
+body {
+         height: 100vh;
+}
+header a {
+         color: inherit;
+}
+header a:hover {
+         color: cyan;
+}
+`, background)
 }
 
 func header(unreadCount int, user api.User) g.Node {

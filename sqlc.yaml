@@ -1,19 +1,5 @@
 version: "2"
 sql:
-  - engine: "sqlite"
-    queries: "db/query.sql"
-    schema: "db/schema-fixed.sql"
-    gen:
-      go:
-        package: "api3"
-        out: "api3"
-        rename:
-          sender_avatar_url: "SenderAvatarURL"
-          avatar_url: "AvatarURL"
-        overrides:
-          - column: "gradients.gradient"
-            go_type: "oj/element/gradient.Gradient"
-
   - engine: "postgresql"
     queries: "db/query.sql"
     schema: "db/pgschema.sql"
