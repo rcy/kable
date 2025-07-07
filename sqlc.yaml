@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "db/query.sql"
-    schema: "db/pgschema.sql"
+    schema: "migrations"
     gen:
       go:
         package: "api"
@@ -13,4 +13,6 @@ sql:
           avatar_url: "AvatarURL"
         overrides:
           - column: "gradients.gradient"
+            go_type: "oj/element/gradient.Gradient"
+          - column: "users.gradient"
             go_type: "oj/element/gradient.Gradient"

@@ -2,16 +2,13 @@ package gradients
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"oj/api"
 	"oj/element/gradient"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -49,7 +46,7 @@ func Picker(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
-	g, err := gradientFromUrlValues(r.PostForm)
+	g, err := gradient.NewFromURLValues(r.PostForm)
 	if err != nil {
 		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
@@ -71,49 +68,45 @@ func (s *service) SetBackground(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("ParseForm: %w", err), 500)
 	}
 
-	g, err := gradientFromUrlValues(r.PostForm)
+	g, err := gradient.NewFromURLValues(r.PostForm)
 	if err != nil {
 		render.Error(w, fmt.Errorf("gradientFromUrlValues: %w", err), 500)
 		return
 	}
 
-	encodedGradient, _ := json.Marshal(g)
-	_, err = s.Conn.Exec(ctx, "insert into gradients(user_id, gradient) values($1, $2)", user.ID, encodedGradient)
+	tx, err := s.Conn.Begin(ctx)
 	if err != nil {
-		render.Error(w, fmt.Errorf("insert into gradients: %w", err), 500)
+		render.Error(w, err, http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.Queries.WithTx(tx)
+	_, err = qtx.InsertGradient(ctx, api.InsertGradientParams{
+		UserID:   user.ID,
+		Gradient: g,
+	})
+	if err != nil {
+		render.Error(w, fmt.Errorf("InsertGradient: %w", err), 500)
+		return
+	}
+
+	_, err = qtx.UpdateUserGradient(ctx, api.UpdateUserGradientParams{
+		UserID:   user.ID,
+		Gradient: g,
+	})
+	if err != nil {
+		render.Error(w, fmt.Errorf("UpdateUserGradient: %w", err), 500)
+		return
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		render.Error(w, fmt.Errorf("Commit: %w", err), 500)
 		return
 	}
 
 	style := fmt.Sprintf("body { background: %s; }", g.Render())
 
 	w.Write([]byte(style))
-}
-
-// Return a Gradient from a parsed form
-func gradientFromUrlValues(f url.Values) (gradient.Gradient, error) {
-	gradientType := f.Get("gradientType")
-	repeat := f.Get("repeat") == "on"
-	colors := f["color"]
-
-	// convert []string to []int
-	positions := make([]int, len(f["percent"]))
-	for i, p := range f["percent"] {
-		positions[i], _ = strconv.Atoi(p)
-	}
-
-	if len(colors) != len(positions) {
-		return gradient.Gradient{}, fmt.Errorf("colors/positions length mismatch")
-	}
-
-	degrees, err := strconv.Atoi(f.Get("degrees"))
-	if err != nil {
-		return gradient.Gradient{}, err
-	}
-	return gradient.Gradient{
-		Type:      gradientType,
-		Repeat:    repeat,
-		Degrees:   degrees,
-		Colors:    colors,
-		Positions: positions,
-	}, nil
 }

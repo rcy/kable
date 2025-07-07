@@ -29,7 +29,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
 
-	friends, err := s.Queries.GetFriendsWithGradient(ctx, l.User.ID)
+	friends, err := s.Queries.GetFriends(ctx, l.User.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("GetFriendsWithGradient: %w", err), http.StatusInternalServerError)
 		return
@@ -38,7 +38,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	d := struct {
 		Layout  layout.Data
 		User    api.User
-		Friends []api.GetFriendsWithGradientRow
+		Friends []api.User
 	}{
 		Layout:  l,
 		User:    l.User,

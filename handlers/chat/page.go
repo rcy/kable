@@ -11,7 +11,6 @@ import (
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
-	"oj/services/background"
 	"oj/services/room"
 	"strconv"
 
@@ -48,11 +47,6 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ug, err := background.ForUser(ctx, rs.Queries, pageUser.ID)
-	if err != nil {
-		render.Error(w, fmt.Errorf("ForUser: %w", err), 500)
-		return
-	}
 
 	room, err := room.FindOrCreateByUserIDs(ctx, rs.Conn, rs.Queries, user.ID, pageUser.ID)
 	if err != nil {
@@ -78,8 +72,9 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("FromUser: %w", err), 500)
 		return
 	}
+
 	// override layout gradient to show the page user's not the request user's
-	l.BackgroundGradient = *ug
+	l.BackgroundGradient = pageUser.Gradient
 
 	pd := struct {
 		Layout   layout.Data

@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"oj/api"
 	"oj/element/gradient"
-	"oj/services/background"
 	"oj/templatehelpers"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -39,20 +38,15 @@ type Data struct {
 }
 
 func (s *service) FromUser(ctx context.Context, user api.User) (Data, error) {
-	backgroundGradient, err := background.ForUser(ctx, s.Queries, user.ID)
-	if err != nil {
-		return Data{}, err
-	}
-
 	var unreadCount int
-	err = pgxscan.Get(ctx, s.Conn, &unreadCount, `select count(*) from deliveries where recipient_id = $1 and sent_at is null`, user.ID)
+	err := pgxscan.Get(ctx, s.Conn, &unreadCount, `select count(*) from deliveries where recipient_id = $1 and sent_at is null`, user.ID)
 	if err != nil {
 		return Data{}, fmt.Errorf("pgxscan: %w", err)
 	}
 
 	return Data{
 		User:               user,
-		BackgroundGradient: *backgroundGradient,
+		BackgroundGradient: user.Gradient,
 		UnreadCount:        unreadCount,
 	}, nil
 }
