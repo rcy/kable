@@ -8,9 +8,6 @@ sql:
         package: "api"
         sql_package: "pgx/v5"
         out: "api"
-        rename:
-          sender_avatar_url: "SenderAvatarURL"
-          avatar_url: "AvatarURL"
         overrides:
           - column: "gradients.gradient"
             go_type: "oj/gradient.Gradient"

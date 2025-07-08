@@ -16,7 +16,7 @@
 
   {{range .Received}}
     <div>
-      <img height="24" width="24" src="{{.AvatarURL}}"> {{.Username}} {{.Subject}} ({{.State}})
+      <img height="24" width="24" src="{{.Avatar.URL}}"> {{.Username}} {{.Subject}} ({{.State}})
     </div>
   {{end}}
 {{end}}
