@@ -56,7 +56,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 			),
 
 			h.Section(
-				h.Div(h.Style("display:flex; flex-wrap: wrap; justify-content: space-between; gap: 1em"),
+				h.Div(h.Style("display:flex; flex-wrap: wrap; gap: 38px"),
 					g.Map(friends, func(friend api.User) g.Node {
 						return h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
 							UserCard(friend, true))
