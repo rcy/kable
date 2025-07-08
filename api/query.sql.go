@@ -37,7 +37,7 @@ const adminRecentMessages = `-- name: AdminRecentMessages :many
 select
         m.id, m.created_at, m.sender_id, m.room_id, m.body,
         sender.username as sender_username,
-        sender.avatar_url as sender_avatar_url
+        sender.avatar as sender_avatar
  from messages m
  join users sender on m.sender_id = sender.id
  order by m.created_at desc
@@ -45,13 +45,13 @@ select
 `
 
 type AdminRecentMessagesRow struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamptz
-	SenderID        int64
-	RoomID          int64
-	Body            string
-	SenderUsername  string
-	SenderAvatarURL string
+	ID             int64
+	CreatedAt      pgtype.Timestamptz
+	SenderID       int64
+	RoomID         int64
+	Body           string
+	SenderUsername string
+	SenderAvatar   avatar.Avatar
 }
 
 func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessagesRow, error) {
@@ -70,7 +70,7 @@ func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessage
 			&i.RoomID,
 			&i.Body,
 			&i.SenderUsername,
-			&i.SenderAvatarURL,
+			&i.SenderAvatar,
 		); err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessage
 }
 
 const allBots = `-- name: AllBots :many
-select bots.id, bots.created_at, bots.owner_id, bots.assistant_id, bots.name, bots.description, bots.published, users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from bots join users on bots.owner_id = users.id order by bots.created_at desc
+select bots.id, bots.created_at, bots.owner_id, bots.assistant_id, bots.name, bots.description, bots.published, users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from bots join users on bots.owner_id = users.id order by bots.created_at desc
 `
 
 type AllBotsRow struct {
@@ -112,7 +112,7 @@ func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
 			&i.User.CreatedAt,
 			&i.User.Username,
 			&i.User.Email,
-			&i.User.AvatarURL,
+			&i.User.AvatarUrlDeprecated,
 			&i.User.IsParent,
 			&i.User.Bio,
 			&i.User.BecomeUserID,
@@ -161,7 +161,7 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const allUsers = `-- name: AllUsers :many
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar from users order by created_at desc
+select id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar from users order by created_at desc
 `
 
 func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
@@ -178,7 +178,7 @@ func (q *Queries) AllUsers(ctx context.Context) ([]User, error) {
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -421,7 +421,7 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 }
 
 const createParent = `-- name: CreateParent :one
-insert into users(email, username, is_parent) values($1, $2, true) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar
+insert into users(email, username, is_parent) values($1, $2, true) returning id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar
 `
 
 type CreateParentParams struct {
@@ -437,7 +437,7 @@ func (q *Queries) CreateParent(ctx context.Context, arg CreateParentParams) (Use
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -615,7 +615,7 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thr
 }
 
 const createUser = `-- name: CreateUser :one
-insert into users(username) values($1) returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar
+insert into users(username) values($1) returning id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar
 `
 
 func (q *Queries) CreateUser(ctx context.Context, username string) (User, error) {
@@ -626,7 +626,7 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (User, error)
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -687,7 +687,7 @@ func (q *Queries) GetAttemptByID(ctx context.Context, id int64) (Attempt, error)
 }
 
 const getConnection = `-- name: GetConnection :one
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar,
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar,
        case
            when f1.a_id = $1 then f1.b_role
            else ''
@@ -709,19 +709,19 @@ type GetConnectionParams struct {
 }
 
 type GetConnectionRow struct {
-	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     string
-	Email        pgtype.Text
-	AvatarURL    string
-	IsParent     bool
-	Bio          string
-	BecomeUserID pgtype.Int8
-	Admin        bool
-	Gradient     gradient.Gradient
-	Avatar       avatar.Avatar
-	RoleOut      string
-	RoleIn       string
+	ID                  int64
+	CreatedAt           pgtype.Timestamptz
+	Username            string
+	Email               pgtype.Text
+	AvatarUrlDeprecated string
+	IsParent            bool
+	Bio                 string
+	BecomeUserID        pgtype.Int8
+	Admin               bool
+	Gradient            gradient.Gradient
+	Avatar              avatar.Avatar
+	RoleOut             string
+	RoleIn              string
 }
 
 func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error) {
@@ -732,7 +732,7 @@ func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (G
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -746,7 +746,7 @@ func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (G
 }
 
 const getConnections = `-- name: GetConnections :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = $1
 join friends f2 on f2.a_id = u.id and f2.b_id = $1
 where f1.b_role <> '' and f2.b_role <> ''
@@ -766,7 +766,7 @@ func (q *Queries) GetConnections(ctx context.Context, aID int64) ([]User, error)
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -785,7 +785,7 @@ func (q *Queries) GetConnections(ctx context.Context, aID int64) ([]User, error)
 }
 
 const getCurrentAndPotentialParentConnections = `-- name: GetCurrentAndPotentialParentConnections :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar,
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar,
        case
            when f1.a_id = $1 then f1.b_role
            else ''
@@ -806,19 +806,19 @@ limit 128
 `
 
 type GetCurrentAndPotentialParentConnectionsRow struct {
-	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     string
-	Email        pgtype.Text
-	AvatarURL    string
-	IsParent     bool
-	Bio          string
-	BecomeUserID pgtype.Int8
-	Admin        bool
-	Gradient     gradient.Gradient
-	Avatar       avatar.Avatar
-	RoleOut      string
-	RoleIn       string
+	ID                  int64
+	CreatedAt           pgtype.Timestamptz
+	Username            string
+	Email               pgtype.Text
+	AvatarUrlDeprecated string
+	IsParent            bool
+	Bio                 string
+	BecomeUserID        pgtype.Int8
+	Admin               bool
+	Gradient            gradient.Gradient
+	Avatar              avatar.Avatar
+	RoleOut             string
+	RoleIn              string
 }
 
 func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, aID int64) ([]GetCurrentAndPotentialParentConnectionsRow, error) {
@@ -835,7 +835,7 @@ func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, a
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -856,7 +856,7 @@ func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, a
 }
 
 const getFamily = `-- name: GetFamily :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar
 from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = $1
 join friends f2 on f2.a_id = u.id and f2.b_id = $1
@@ -877,7 +877,7 @@ func (q *Queries) GetFamily(ctx context.Context, aID int64) ([]User, error) {
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -896,7 +896,7 @@ func (q *Queries) GetFamily(ctx context.Context, aID int64) ([]User, error) {
 }
 
 const getFriends = `-- name: GetFriends :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'friend'
 join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'friend'
 `
@@ -915,7 +915,7 @@ func (q *Queries) GetFriends(ctx context.Context, aID int64) ([]User, error) {
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -934,7 +934,7 @@ func (q *Queries) GetFriends(ctx context.Context, aID int64) ([]User, error) {
 }
 
 const getKids = `-- name: GetKids :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'child'
 join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'parent'
 `
@@ -953,7 +953,7 @@ func (q *Queries) GetKids(ctx context.Context, aID int64) ([]User, error) {
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -972,7 +972,7 @@ func (q *Queries) GetKids(ctx context.Context, aID int64) ([]User, error) {
 }
 
 const getParents = `-- name: GetParents :many
-select u.id, u.created_at, u.username, u.email, u.avatar_url, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
+select u.id, u.created_at, u.username, u.email, u.avatar_url_deprecated, u.is_parent, u.bio, u.become_user_id, u.admin, u.gradient, u.avatar from users u
 join friends f1 on f1.b_id = u.id and f1.a_id = $1 and f1.b_role = 'parent'
 join friends f2 on f2.a_id = u.id and f2.b_id = $1 and f2.b_role = 'child'
 `
@@ -991,7 +991,7 @@ func (q *Queries) GetParents(ctx context.Context, aID int64) ([]User, error) {
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -1031,7 +1031,7 @@ func (q *Queries) InsertGradient(ctx context.Context, arg InsertGradientParams) 
 }
 
 const kidsByParentID = `-- name: KidsByParentID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = $1 order by kids_parents.created_at desc
+select users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = $1 order by kids_parents.created_at desc
 `
 
 func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, error) {
@@ -1048,7 +1048,7 @@ func (q *Queries) KidsByParentID(ctx context.Context, parentID int64) ([]User, e
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -1084,7 +1084,7 @@ func (q *Queries) MessageByID(ctx context.Context, id int64) (Message, error) {
 }
 
 const parentByID = `-- name: ParentByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar from users where id = $1 and is_parent = true
+select id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar from users where id = $1 and is_parent = true
 `
 
 func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
@@ -1095,7 +1095,7 @@ func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1107,7 +1107,7 @@ func (q *Queries) ParentByID(ctx context.Context, id int64) (User, error) {
 }
 
 const parentsByKidID = `-- name: ParentsByKidID :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = $1
+select users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from kids_parents join users on kids_parents.parent_id = users.id where kids_parents.kid_id = $1
 `
 
 func (q *Queries) ParentsByKidID(ctx context.Context, kidID int64) ([]User, error) {
@@ -1124,7 +1124,7 @@ func (q *Queries) ParentsByKidID(ctx context.Context, kidID int64) ([]User, erro
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,
@@ -1310,24 +1310,17 @@ func (q *Queries) QuizQuestions(ctx context.Context, quizID int64) ([]Question, 
 }
 
 const recentRoomMessages = `-- name: RecentRoomMessages :many
-select id, created_at, sender_id, room_id, body, sender_avatar_url from (
-  select m.id, m.created_at, m.sender_id, m.room_id, m.body, sender.avatar_url as sender_avatar_url
-   from messages m
-   join users sender on m.sender_id = sender.id
-   where m.room_id = $1
-   order by m.created_at desc
-   limit 128
-  ) t
-order by created_at asc
+select m.id, m.created_at, m.sender_id, m.room_id, m.body, sender.id, sender.created_at, sender.username, sender.email, sender.avatar_url_deprecated, sender.is_parent, sender.bio, sender.become_user_id, sender.admin, sender.gradient, sender.avatar
+from messages m
+join users sender on m.sender_id = sender.id
+where m.room_id = $1
+order by m.created_at desc
+limit 128
 `
 
 type RecentRoomMessagesRow struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamptz
-	SenderID        int64
-	RoomID          int64
-	Body            string
-	SenderAvatarURL string
+	Message Message
+	User    User
 }
 
 func (q *Queries) RecentRoomMessages(ctx context.Context, roomID int64) ([]RecentRoomMessagesRow, error) {
@@ -1340,12 +1333,22 @@ func (q *Queries) RecentRoomMessages(ctx context.Context, roomID int64) ([]Recen
 	for rows.Next() {
 		var i RecentRoomMessagesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.SenderID,
-			&i.RoomID,
-			&i.Body,
-			&i.SenderAvatarURL,
+			&i.Message.ID,
+			&i.Message.CreatedAt,
+			&i.Message.SenderID,
+			&i.Message.RoomID,
+			&i.Message.Body,
+			&i.User.ID,
+			&i.User.CreatedAt,
+			&i.User.Username,
+			&i.User.Email,
+			&i.User.AvatarUrlDeprecated,
+			&i.User.IsParent,
+			&i.User.Bio,
+			&i.User.BecomeUserID,
+			&i.User.Admin,
+			&i.User.Gradient,
+			&i.User.Avatar,
 		); err != nil {
 			return nil, err
 		}
@@ -1457,34 +1460,6 @@ func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedPara
 	return i, err
 }
 
-const updateAvatar = `-- name: UpdateAvatar :one
-update users set avatar_url = $1 where id = $2 returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar
-`
-
-type UpdateAvatarParams struct {
-	AvatarURL string
-	ID        int64
-}
-
-func (q *Queries) UpdateAvatar(ctx context.Context, arg UpdateAvatarParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateAvatar, arg.AvatarURL, arg.ID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.Username,
-		&i.Email,
-		&i.AvatarURL,
-		&i.IsParent,
-		&i.Bio,
-		&i.BecomeUserID,
-		&i.Admin,
-		&i.Gradient,
-		&i.Avatar,
-	)
-	return i, err
-}
-
 const updateBotDescription = `-- name: UpdateBotDescription :one
 update bots set description = $1, name = $2 where id = $3 and owner_id = $4 returning id, created_at, owner_id, assistant_id, name, description, published
 `
@@ -1585,8 +1560,36 @@ func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, e
 	return i, err
 }
 
+const updateUserAvatar = `-- name: UpdateUserAvatar :one
+update users set avatar = $1 where id = $2 returning id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar
+`
+
+type UpdateUserAvatarParams struct {
+	Avatar avatar.Avatar
+	ID     int64
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserAvatar, arg.Avatar, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.Username,
+		&i.Email,
+		&i.AvatarUrlDeprecated,
+		&i.IsParent,
+		&i.Bio,
+		&i.BecomeUserID,
+		&i.Admin,
+		&i.Gradient,
+		&i.Avatar,
+	)
+	return i, err
+}
+
 const updateUserGradient = `-- name: UpdateUserGradient :one
-update users set gradient = $1 where id = $2 returning id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar
+update users set gradient = $1 where id = $2 returning id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar
 `
 
 type UpdateUserGradientParams struct {
@@ -1602,7 +1605,7 @@ func (q *Queries) UpdateUserGradient(ctx context.Context, arg UpdateUserGradient
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1614,7 +1617,7 @@ func (q *Queries) UpdateUserGradient(ctx context.Context, arg UpdateUserGradient
 }
 
 const userByEmail = `-- name: UserByEmail :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar from users where email = $1
+select id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar from users where email = $1
 `
 
 func (q *Queries) UserByEmail(ctx context.Context, email pgtype.Text) (User, error) {
@@ -1625,7 +1628,7 @@ func (q *Queries) UserByEmail(ctx context.Context, email pgtype.Text) (User, err
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1637,7 +1640,7 @@ func (q *Queries) UserByEmail(ctx context.Context, email pgtype.Text) (User, err
 }
 
 const userByID = `-- name: UserByID :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar from users where id = $1
+select id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar from users where id = $1
 `
 
 func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
@@ -1648,7 +1651,7 @@ func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1660,7 +1663,7 @@ func (q *Queries) UserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const userBySessionKey = `-- name: UserBySessionKey :one
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from sessions join users on sessions.user_id = users.id where sessions.key = $1
+select users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from sessions join users on sessions.user_id = users.id where sessions.key = $1
 `
 
 func (q *Queries) UserBySessionKey(ctx context.Context, key string) (User, error) {
@@ -1671,7 +1674,7 @@ func (q *Queries) UserBySessionKey(ctx context.Context, key string) (User, error
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1683,7 +1686,7 @@ func (q *Queries) UserBySessionKey(ctx context.Context, key string) (User, error
 }
 
 const userByUsername = `-- name: UserByUsername :one
-select id, created_at, username, email, avatar_url, is_parent, bio, become_user_id, admin, gradient, avatar from users where username = $1
+select id, created_at, username, email, avatar_url_deprecated, is_parent, bio, become_user_id, admin, gradient, avatar from users where username = $1
 `
 
 func (q *Queries) UserByUsername(ctx context.Context, username string) (User, error) {
@@ -1694,7 +1697,7 @@ func (q *Queries) UserByUsername(ctx context.Context, username string) (User, er
 		&i.CreatedAt,
 		&i.Username,
 		&i.Email,
-		&i.AvatarURL,
+		&i.AvatarUrlDeprecated,
 		&i.IsParent,
 		&i.Bio,
 		&i.BecomeUserID,
@@ -1736,7 +1739,7 @@ func (q *Queries) UserNotes(ctx context.Context, ownerID int64) ([]Note, error) 
 }
 
 const userPostcardsReceived = `-- name: UserPostcardsReceived :many
-select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, s.username, s.avatar_url
+select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, s.username, s.avatar
 from postcards p
 join users s on p.sender = s.id
 where recipient = $1
@@ -1752,7 +1755,7 @@ type UserPostcardsReceivedRow struct {
 	Body      string
 	State     string
 	Username  string
-	AvatarURL string
+	Avatar    avatar.Avatar
 }
 
 func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient int64) ([]UserPostcardsReceivedRow, error) {
@@ -1773,7 +1776,7 @@ func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient int64) ([
 			&i.Body,
 			&i.State,
 			&i.Username,
-			&i.AvatarURL,
+			&i.Avatar,
 		); err != nil {
 			return nil, err
 		}
@@ -1786,7 +1789,7 @@ func (q *Queries) UserPostcardsReceived(ctx context.Context, recipient int64) ([
 }
 
 const userPostcardsSent = `-- name: UserPostcardsSent :many
-select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, r.username, r.avatar_url
+select p.id, p.created_at, p.sender, p.recipient, p.subject, p.body, p.state, r.username, r.avatar
 from postcards p
 join users r on p.recipient = r.id
 where sender = $1
@@ -1802,7 +1805,7 @@ type UserPostcardsSentRow struct {
 	Body      string
 	State     string
 	Username  string
-	AvatarURL string
+	Avatar    avatar.Avatar
 }
 
 func (q *Queries) UserPostcardsSent(ctx context.Context, sender int64) ([]UserPostcardsSentRow, error) {
@@ -1823,7 +1826,7 @@ func (q *Queries) UserPostcardsSent(ctx context.Context, sender int64) ([]UserPo
 			&i.Body,
 			&i.State,
 			&i.Username,
-			&i.AvatarURL,
+			&i.Avatar,
 		); err != nil {
 			return nil, err
 		}
@@ -1890,7 +1893,7 @@ func (q *Queries) UserVisibleBots(ctx context.Context, ownerID int64) ([]Bot, er
 }
 
 const usersWithUnreadCounts = `-- name: UsersWithUnreadCounts :many
-select users.id, users.created_at, users.username, users.email, users.avatar_url, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar, count(*) unread_count
+select users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar, count(*) unread_count
 from deliveries
 join users on sender_id = users.id
 where recipient_id = $1 and sent_at is null
@@ -1898,18 +1901,18 @@ group by users.id
 `
 
 type UsersWithUnreadCountsRow struct {
-	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     string
-	Email        pgtype.Text
-	AvatarURL    string
-	IsParent     bool
-	Bio          string
-	BecomeUserID pgtype.Int8
-	Admin        bool
-	Gradient     gradient.Gradient
-	Avatar       avatar.Avatar
-	UnreadCount  int64
+	ID                  int64
+	CreatedAt           pgtype.Timestamptz
+	Username            string
+	Email               pgtype.Text
+	AvatarUrlDeprecated string
+	IsParent            bool
+	Bio                 string
+	BecomeUserID        pgtype.Int8
+	Admin               bool
+	Gradient            gradient.Gradient
+	Avatar              avatar.Avatar
+	UnreadCount         int64
 }
 
 func (q *Queries) UsersWithUnreadCounts(ctx context.Context, recipientID int64) ([]UsersWithUnreadCountsRow, error) {
@@ -1926,7 +1929,7 @@ func (q *Queries) UsersWithUnreadCounts(ctx context.Context, recipientID int64) 
 			&i.CreatedAt,
 			&i.Username,
 			&i.Email,
-			&i.AvatarURL,
+			&i.AvatarUrlDeprecated,
 			&i.IsParent,
 			&i.Bio,
 			&i.BecomeUserID,

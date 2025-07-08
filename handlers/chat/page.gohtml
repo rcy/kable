@@ -22,7 +22,7 @@
 
     <a href="/u/{{.User.ID}}" style="z-index:1000; text-decoration: none;">
       <section class="ghost" style="display:flex; align-items: top; gap:1em; box-shadow: 0 8px rgba(0,0,0,.5);">
-        <img src="{{.User.AvatarURL}}" width="80px" height="80px">
+        <img src="{{.User.Avatar.URL}}" width="80px" height="80px">
         <div>
           chatting with
           <h1>{{.User.Username}}</h1>
@@ -46,7 +46,7 @@
        hx-select="#messages-{{.User.ID}}"
        hx-swap="outerHTML">
     {{range .Messages}}
-      {{if (eq .SenderID $.Layout.User.ID)}}
+      {{if (eq .Message.SenderID $.Layout.User.ID)}}
         {{template "chat_message_mine" .}}
       {{else}}
         {{template "chat_message_other" .}}
@@ -57,15 +57,15 @@
 
 {{define "chat_message_other"}}
   <div style="display:flex; align-items:end">
-    <a href="/u/{{.SenderID}}">
-      <img style="margin-bottom: 8px" src="{{.SenderAvatarURL}}" width="80" height="80">
+    <a href="/u/{{.User.ID}}">
+      <img style="margin-bottom: 8px" src="{{.User.Avatar.URL}}" width="80" height="80">
     </a>
     <div class="nes-balloon from-left" style="overflow-wrap: break-word; max-width: 70%">
-      <p>{{html .Body}}</p>
+      <p>{{html .Message.Body}}</p>
       <div style="display:flex; gap:1em; font-size: .8em; float:right; color: gray">
-        {{ago .CreatedAt}}
+        {{ago .Message.CreatedAt}}
         <div>
-          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.ID}}">save</a>
+          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.Message.ID}}">save</a>
         </div>
       </div>
     </div>
@@ -77,15 +77,15 @@
   <div style="display:flex; align-items:end">
     <div style="flex:1"></div>
     <div class="nes-balloon from-right" style="overflow-wrap: break-word; max-width: 70%">
-      <p>{{html .Body}}</p>
+      <p>{{html .Message.Body}}</p>
       <div style="display:flex; gap:1em; font-size: .8em; float:right; color: gray">
-        {{ago .CreatedAt}}
+        {{ago .Message.CreatedAt}}
         <div>
-          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.ID}}">save</a>
+          <a href="#" hx-swap="outerHTML" hx-post="/fun/notes/from-chat/{{.Message.ID}}">save</a>
         </div>
       </div>
     </div>
-    <img style="margin-bottom: 8px" src="{{.SenderAvatarURL}}" width="80" height="80">
+    <img style="margin-bottom: 8px" src="{{.User.Avatar.URL}}" width="80" height="80">
   </div>
 {{end}}
 

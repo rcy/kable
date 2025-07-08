@@ -142,7 +142,7 @@ func header(unreadCount int, user api.User) g.Node {
 									g.Text(user.Username),
 								),
 								h.Img(
-									h.Src(user.AvatarURL),
+									h.Src(user.AvatarUrlDeprecated),
 									h.Height("24px"),
 								),
 							),

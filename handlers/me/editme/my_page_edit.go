@@ -4,30 +4,79 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
-	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
-)
 
-var (
-	//go:embed my_page_edit.gohtml
-	pageContent        string
-	myPageEditTemplate = layout.MustParse(pageContent, AvatarContent)
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 func (s *service) MyPageEdit(w http.ResponseWriter, r *http.Request) {
 	l := layout.FromContext(r.Context())
 
-	d := struct {
-		Layout layout.Data
-		User   api.User
-	}{
-		Layout: l,
-		User:   l.User,
-	}
-
-	render.Execute(w, myPageEditTemplate, d)
+	layout.Layout(l,
+		l.User.Username,
+		h.Section(
+			h.Class("nes-container is-dark"),
+			g.Attr("hx-swap", "outerHTML"),
+			g.Attr("hx-target", "closest section"),
+			h.H3(
+				g.Text("Edit My Profile"),
+			),
+			h.Div(
+				h.Style("margin-bottom: 2em"),
+				h.Div(
+					h.Style("display:flex;width:100%; align-items:center; justify-content:space-between; gap: 1em"),
+					changeableAvatar(l.User),
+				),
+			),
+			h.Form(
+				h.Method("post"),
+				h.Style("display: flex; flex-direction: column; gap: 2em"),
+				h.Div(
+					h.Class("nes-field"),
+					h.Label(
+						h.For("username-field"),
+						g.Text("My Username"),
+					),
+					h.Input(
+						h.ID("username-field"),
+						h.Class("nes-input"),
+						h.Name("username"),
+						h.Type("text"),
+						h.Value(l.User.Username),
+					),
+				),
+				h.Div(
+					h.Class("nes-field"),
+					h.Label(
+						h.For("username-field"),
+						g.Text("About Me"),
+					),
+					h.Textarea(
+						h.Name("bio"),
+						h.Class("nes-textarea"),
+						h.Placeholder("Write something about yourself..."),
+						h.Rows("10"),
+						g.Text(l.User.Bio),
+					),
+				),
+				h.Div(
+					h.Style("display:flex; justify-content:space-between;"),
+					h.Button(
+						h.Type("submit"),
+						h.Class("nes-btn is-primary"),
+						g.Text("save"),
+					),
+					h.A(
+						h.Href("/me"),
+						h.Class("nes-btn"),
+						g.Text("cancel"),
+					),
+				),
+			),
+		)).Render(w)
 }
 
 func (s *service) Post(w http.ResponseWriter, r *http.Request) {
