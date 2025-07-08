@@ -57,7 +57,10 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 			h.Section(
 				h.Div(h.Style("display:flex; flex-wrap: wrap; justify-content: space-between; gap: 1em"),
-					g.Map(friends, friendCard)),
+					g.Map(friends, func(friend api.User) g.Node {
+						return h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
+							UserCard(friend, true))
+					})),
 			),
 
 			h.Div(
@@ -92,12 +95,7 @@ func profile(user api.User) g.Node {
 			h.Style("display: flex; align-items: top; gap: 1em;  justify-content: space-between"),
 			h.Div(
 				h.Style("display: flex; align-items: top; gap: 1em;"),
-				h.Figure(
-					h.Style("width:80px; height:80px;"),
-					h.Img(
-						h.Src(user.Avatar.URL()),
-					),
-				),
+				UserCard(user, true),
 				h.Div(
 					h.Style("display: flex; flex-direction: column"),
 					h.H1(
@@ -179,13 +177,13 @@ func unreadFriend(friend api.UsersWithUnreadCountsRow) g.Node {
 	)
 }
 
-func friendCard(friend api.User) g.Node {
-	return h.Div(
+func UserCard(friend api.User, withUsername bool) g.Node {
+	return h.Figure(
 		h.Div(h.Style("background: "+string(friend.Gradient.Render())),
-			h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
-				h.Img(h.Width("128px"), h.Src(friend.Avatar.URL())))),
-		h.Div(h.Style("background: black; color: white"),
-			g.Text(shorten(friend.Username, 8))))
+			h.Img(h.Width("128px"), h.Src(friend.Avatar.URL()))),
+		g.If(withUsername,
+			h.Div(h.Style("background: black; color: white"),
+				g.Text(shorten(friend.Username, 8)))))
 }
 
 // Return first n characters of text

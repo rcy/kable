@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"oj/api"
 	"oj/avatar"
+	"oj/handlers/me"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"time"
@@ -48,11 +49,13 @@ func (s *service) GetAvatars(w http.ResponseWriter, r *http.Request) {
 				g.Attr("hx-swap", "outerHTML"),
 				g.Attr("hx-target", "#avatar-list"),
 				g.Attr("hx-vals", fmt.Sprintf(`{"Seed":"%s"}`, avi.Seed)),
-				h.Img(
-					h.Width("80px"),
-					h.Height("80px"),
-					h.Src(avi.URL()),
-				))
+				h.Figure(
+					h.Div(h.Style("background: "+string(user.Gradient.Render())),
+						h.Img(
+							h.Width("128px"),
+							h.Height("128px"),
+							h.Src(avi.URL()),
+						))))
 		})).Render(w)
 }
 
@@ -78,15 +81,19 @@ func changeableAvatar(user api.User) g.Node {
 	id := fmt.Sprintf("avatar-%d", user.ID)
 	return h.Div(
 		h.ID(id),
-		h.A(
-			h.Href("#"),
-			g.Attr("hx-get", "/avatars"),
-			g.Attr("hx-target", "#"+id),
-			h.Img(
-				h.Src(user.Avatar.URL()),
-				h.Style("image-rendering: pixelated"),
+		h.Div(h.Style("display:flex; gap: 1em"),
+			h.A(
+				me.UserCard(user, false),
+				//h.Class("nes-btn"),
+				h.Href("#"),
+				g.Attr("hx-get", "/avatars"),
+				g.Attr("hx-target", "#"+id),
 			),
-			g.Text("change"),
+			// h.A(
+			// 	h.Div(h.Style("width: 128px; height: 128px; background: "+string(user.Gradient.Render()))),
+			// 	h.Href("#"),
+			// 	g.Attr("hx-get", "/fun/gradients"),
+			// 	g.Attr("hx-target", "#"+id)),
 		),
 	)
 }
