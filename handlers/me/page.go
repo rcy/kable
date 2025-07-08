@@ -95,7 +95,7 @@ func profile(user api.User) g.Node {
 				h.Figure(
 					h.Style("width:80px; height:80px;"),
 					h.Img(
-						h.Src(user.AvatarURL),
+						h.Src(user.Avatar.URL()),
 					),
 				),
 				h.Div(
@@ -149,7 +149,7 @@ func unreadFriend(friend api.UsersWithUnreadCountsRow) g.Node {
 				h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
 				h.Style("display:flex; gap:1em; color: inherit"),
 				h.Img(
-					h.Src(friend.AvatarURL),
+					h.Src(friend.Avatar.URL()),
 					h.Height("80px"),
 					h.Width("80px"),
 				),
@@ -183,7 +183,7 @@ func friendCard(friend api.User) g.Node {
 	return h.Div(
 		h.Div(h.Style("background: "+string(friend.Gradient.Render())),
 			h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
-				h.Img(h.Width("128px"), h.Src(friend.AvatarURL)))),
+				h.Img(h.Width("128px"), h.Src(friend.Avatar.URL())))),
 		h.Div(h.Style("background: black; color: white"),
 			g.Text(shorten(friend.Username, 8))))
 }

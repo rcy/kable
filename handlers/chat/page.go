@@ -12,6 +12,7 @@ import (
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"oj/services/room"
+	"slices"
 	"strconv"
 
 	"github.com/alexandrevicenzi/go-sse"
@@ -59,6 +60,7 @@ func (rs Resource) Page(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("RecentRoomMessages: %w", err), 500)
 		return
 	}
+	slices.Reverse(records)
 
 	err = rs.updateDeliveries(room.ID, user.ID)
 	if err != nil {

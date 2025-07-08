@@ -6,6 +6,7 @@ package api
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
+	"oj/avatar"
 	"oj/gradient"
 )
 
@@ -161,14 +162,15 @@ type Thread struct {
 }
 
 type User struct {
-	ID           int64
-	CreatedAt    pgtype.Timestamptz
-	Username     string
-	Email        pgtype.Text
-	AvatarURL    string
-	IsParent     bool
-	Bio          string
-	BecomeUserID pgtype.Int8
-	Admin        bool
-	Gradient     gradient.Gradient
+	ID                  int64
+	CreatedAt           pgtype.Timestamptz
+	Username            string
+	Email               pgtype.Text
+	AvatarUrlDeprecated string
+	IsParent            bool
+	Bio                 string
+	BecomeUserID        pgtype.Int8
+	Admin               bool
+	Gradient            gradient.Gradient
+	Avatar              avatar.Avatar
 }

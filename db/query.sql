@@ -13,19 +13,16 @@ select * from users where id = @id and is_parent = true;
 -- name: UserByEmail :one
 select * from users where email = @email;
 
--- name: UpdateAvatar :one
-update users set avatar_url = @avatar_url where id = @id returning *;
+-- name: UpdateUserAvatar :one
+update users set avatar = @avatar where id = @id returning *;
 
 -- name: RecentRoomMessages :many
-select * from (
-  select m.*, sender.avatar_url as sender_avatar_url
-   from messages m
-   join users sender on m.sender_id = sender.id
-   where m.room_id = @room_id
-   order by m.created_at desc
-   limit 128
-  ) t
-order by created_at asc;
+select sqlc.embed(m), sqlc.embed(sender)
+from messages m
+join users sender on m.sender_id = sender.id
+where m.room_id = @room_id
+order by m.created_at desc
+limit 128;
 
 -- name: MessageByID :one
 select * from messages where id = @id;
@@ -34,7 +31,7 @@ select * from messages where id = @id;
 select
         m.*,
         sender.username as sender_username,
-        sender.avatar_url as sender_avatar_url
+        sender.avatar as sender_avatar
  from messages m
  join users sender on m.sender_id = sender.id
  order by m.created_at desc
@@ -220,14 +217,14 @@ join friends f1 on f1.b_id = u.id and f1.a_id = @a_id and f1.b_role = 'parent'
 join friends f2 on f2.a_id = u.id and f2.b_id = @a_id and f2.b_role = 'child';
 
 -- name: UserPostcardsSent :many
-select p.*, r.username, r.avatar_url
+select p.*, r.username, r.avatar
 from postcards p
 join users r on p.recipient = r.id
 where sender = @sender
 order by p.created_at desc;
 
 -- name: UserPostcardsReceived :many
-select p.*, s.username, s.avatar_url
+select p.*, s.username, s.avatar
 from postcards p
 join users s on p.sender = s.id
 where recipient = @recipient
