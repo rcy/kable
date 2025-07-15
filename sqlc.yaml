@@ -15,5 +15,3 @@ sql:
             go_type: "oj/gradient.Gradient"
           - column: "users.avatar"
             go_type: "oj/avatar.Avatar"
-          - column: "users.avatar"
-            go_type: "oj/avatar.Avatar"
