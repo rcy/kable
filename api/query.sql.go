@@ -131,7 +131,7 @@ func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
 }
 
 const allQuizzes = `-- name: AllQuizzes :many
-select id, created_at, name, description, published from quizzes order by created_at desc
+select id, created_at, name, description, published, user_id from quizzes order by created_at desc
 `
 
 func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
@@ -149,6 +149,7 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 			&i.Name,
 			&i.Description,
 			&i.Published,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -505,7 +506,7 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 }
 
 const createQuiz = `-- name: CreateQuiz :one
-insert into quizzes(name,description) values($1,$2) returning id, created_at, name, description, published
+insert into quizzes(name,description) values($1,$2) returning id, created_at, name, description, published, user_id
 `
 
 type CreateQuizParams struct {
@@ -522,6 +523,7 @@ func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, e
 		&i.Name,
 		&i.Description,
 		&i.Published,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -1205,7 +1207,7 @@ func (q *Queries) PublishedNotes(ctx context.Context) ([]Note, error) {
 }
 
 const publishedQuizzes = `-- name: PublishedQuizzes :many
-select id, created_at, name, description, published from quizzes where published = true order by created_at desc
+select id, created_at, name, description, published, user_id from quizzes where published = true order by created_at desc
 `
 
 func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
@@ -1223,6 +1225,7 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 			&i.Name,
 			&i.Description,
 			&i.Published,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -1263,7 +1266,7 @@ func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error
 }
 
 const quiz = `-- name: Quiz :one
-select id, created_at, name, description, published from quizzes where id = $1
+select id, created_at, name, description, published, user_id from quizzes where id = $1
 `
 
 func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
@@ -1275,6 +1278,7 @@ func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
 		&i.Name,
 		&i.Description,
 		&i.Published,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -1439,7 +1443,7 @@ func (q *Queries) RoomByKey(ctx context.Context, key string) (Room, error) {
 }
 
 const setQuizPublished = `-- name: SetQuizPublished :one
-update quizzes set published = $1 where id = $2 returning id, created_at, name, description, published
+update quizzes set published = $1 where id = $2 returning id, created_at, name, description, published, user_id
 `
 
 type SetQuizPublishedParams struct {
@@ -1456,6 +1460,7 @@ func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedPara
 		&i.Name,
 		&i.Description,
 		&i.Published,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -1538,7 +1543,7 @@ func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) 
 }
 
 const updateQuiz = `-- name: UpdateQuiz :one
-update quizzes set name = $1, description = $2 where id = $3 returning id, created_at, name, description, published
+update quizzes set name = $1, description = $2 where id = $3 returning id, created_at, name, description, published, user_id
 `
 
 type UpdateQuizParams struct {
@@ -1556,6 +1561,7 @@ func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, e
 		&i.Name,
 		&i.Description,
 		&i.Published,
+		&i.UserID,
 	)
 	return i, err
 }

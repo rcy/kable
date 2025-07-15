@@ -122,6 +122,7 @@ type Quiz struct {
 	Name        string
 	Description string
 	Published   bool
+	UserID      int64
 }
 
 type Response struct {
