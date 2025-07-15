@@ -29,7 +29,7 @@
 
     <div>
       <button hx-post="/fun/quizzes/{{.Quiz.ID}}/attempt" class="nes-btn is-success">Try Again</button>
-      <a href="/fun/quizzes" class="nes-btn">Go Back to Quizzes</a>
+      <a href="/u/{{.Quiz.UserID}}#quizzes" class="nes-btn">Back</a>
     </div>
   </div>
 {{end}}

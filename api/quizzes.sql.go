@@ -94,6 +94,37 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 	return items, nil
 }
 
+const publishedUserQuizzes = `-- name: PublishedUserQuizzes :many
+select id, created_at, name, description, published, user_id from quizzes where published = true and user_id = $1 order by created_at desc
+`
+
+func (q *Queries) PublishedUserQuizzes(ctx context.Context, userID int64) ([]Quiz, error) {
+	rows, err := q.db.Query(ctx, publishedUserQuizzes, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Quiz
+	for rows.Next() {
+		var i Quiz
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Name,
+			&i.Description,
+			&i.Published,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const questionCount = `-- name: QuestionCount :one
 select count(*) from questions where quiz_id = $1
 `

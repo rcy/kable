@@ -3,7 +3,7 @@
     <h1>{{.Quiz.Name}}</h1>
     <p>{{.Quiz.Description}}</p>
     <button hx-post="/fun/quizzes/{{.Quiz.ID}}/attempt" class="nes-btn is-success">Start</button>
-    <a class="nes-btn" href="/fun/quizzes">Back to quizzes</a>
+    <a class="nes-btn" href="/u/{{.Quiz.UserID}}#quizzes">Back</a>
   </div>
 {{end}}
 

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
+	"oj/avatar"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/internal/text"
 	"oj/md"
 	"oj/templatehelpers"
 
@@ -43,6 +45,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	quizzes, err := s.Queries.PublishedUserQuizzes(ctx, l.User.ID)
+	if err != nil {
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
+		return
+	}
+
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
@@ -60,6 +68,17 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 					g.Map(friends, func(friend api.User) g.Node {
 						return h.A(h.Href(fmt.Sprintf("/u/%d/chat", friend.ID)),
 							UserCard(friend, true))
+					})),
+			),
+
+			h.Section(h.ID("quizzes"),
+				h.Div(h.Class("nes-container ghost"),
+					h.Div(h.Style("display:flex; justify-content:space-between"),
+						h.H1(g.Text("My Quizzes")),
+						h.Button(h.Class("nes-btn"), g.Text("Create Quiz"))),
+					g.Map(quizzes, func(quiz api.Quiz) g.Node {
+						return h.A(h.Href(fmt.Sprintf("/fun/quizzes/%d", quiz.ID)),
+							QuizCard(quiz))
 					})),
 			),
 
@@ -183,13 +202,13 @@ func UserCard(friend api.User, withUsername bool) g.Node {
 			h.Img(h.Width("128px"), h.Src(friend.Avatar.URL()))),
 		g.If(withUsername,
 			h.Div(h.Style("background: black; color: white"),
-				g.Text(shorten(friend.Username, 8)))))
+				g.Text(text.Shorten(friend.Username, 8)))))
 }
 
-// Return first n characters of text
-func shorten(text string, n int) string {
-	if len(text) < n {
-		return text
-	}
-	return text[:n]
+func QuizCard(quiz api.Quiz) g.Node {
+	avi := avatar.New(fmt.Sprint(quiz.ID), avatar.RingsStyle)
+
+	return h.Div(h.Style("display:flex; gap:1em; align-items: center"),
+		h.Figure(h.Div(h.Img(h.Width("64px"), h.Src(avi.URL())))),
+		h.Div(h.H1(g.Text(quiz.Name))))
 }

@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 	"oj/api"
+	"oj/internal/text"
 
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -139,10 +140,10 @@ func header(unreadCount int, user api.User) g.Node {
 									),
 								),
 								h.Span(
-									g.Text(user.Username),
+									g.Text(text.Shorten(user.Username, 8)),
 								),
 								h.Img(
-									h.Src(user.AvatarUrlDeprecated),
+									h.Src(user.Avatar.URL()),
 									h.Height("24px"),
 								),
 							),
