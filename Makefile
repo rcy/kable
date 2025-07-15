@@ -1,5 +1,7 @@
 -include .env
 
+export PGSERVICE?=local
+
 start: clean-temp
 	air
 
