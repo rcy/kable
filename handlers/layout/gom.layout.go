@@ -43,10 +43,6 @@ func Layout(data Data, title string, main g.Node) g.Node {
 				h.Name("viewport"),
 				h.Content("width=device-width, initial-scale=1"),
 			),
-		),
-		h.Body(
-			h.Style("height: 100%"),
-			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Script(g.Raw(fmt.Sprintf(`
 (function(){
   const es = new EventSource("/es/user-%d");
@@ -62,6 +58,10 @@ func Layout(data Data, title string, main g.Node) g.Node {
 				h.ID("beeper"),
 				h.Src("/assets/chat-alert.mp3"),
 			),
+		),
+		h.Body(
+			h.Style("height: 100%"),
+			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Div(
 				h.Style("height: 100%;display:flex; flex-direction:column; gap:1em"),
 				header(data.UnreadCount, data.User),
