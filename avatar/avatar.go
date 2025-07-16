@@ -6,6 +6,8 @@ import (
 
 const (
 	AvataaarsStyle = "avataaars"
+	RingsStyle     = "rings"
+	DefaultStyle   = AvataaarsStyle
 )
 
 type Avatar struct {
@@ -13,13 +15,13 @@ type Avatar struct {
 	Seed  string
 }
 
-func New(seed string) Avatar {
-	return Avatar{Style: AvataaarsStyle, Seed: seed}
+func New(seed string, style string) Avatar {
+	return Avatar{Style: style, Seed: seed}
 }
 
 func (a Avatar) URL() string {
 	if a.Style == "" {
-		a.Style = AvataaarsStyle
+		a.Style = DefaultStyle
 	}
 	return fmt.Sprintf("https://api.dicebear.com/7.x/%s/svg?seed=%s", a.Style, a.Seed)
 }
