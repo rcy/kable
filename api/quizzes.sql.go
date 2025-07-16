@@ -41,16 +41,17 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const createQuiz = `-- name: CreateQuiz :one
-insert into quizzes(name,description) values($1,$2) returning id, created_at, name, description, published, user_id
+insert into quizzes(name,description,user_id) values($1,$2,$3) returning id, created_at, name, description, published, user_id
 `
 
 type CreateQuizParams struct {
 	Name        string
 	Description string
+	UserID      int64
 }
 
 func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, error) {
-	row := q.db.QueryRow(ctx, createQuiz, arg.Name, arg.Description)
+	row := q.db.QueryRow(ctx, createQuiz, arg.Name, arg.Description, arg.UserID)
 	var i Quiz
 	err := row.Scan(
 		&i.ID,

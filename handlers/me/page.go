@@ -75,9 +75,9 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				h.Div(h.Class("nes-container ghost"),
 					h.Div(h.Style("display:flex; justify-content:space-between"),
 						h.H1(g.Text("My Quizzes")),
-						h.Button(h.Class("nes-btn"), g.Text("Create Quiz"))),
+						h.A(h.Class("nes-btn"), h.Href(fmt.Sprintf("/u/%d/quizzes/create", l.User.ID)), g.Text("Create Quiz"))),
 					g.Map(quizzes, func(quiz api.Quiz) g.Node {
-						return h.A(h.Href(fmt.Sprintf("/fun/quizzes/%d", quiz.ID)),
+						return h.A(h.Href(fmt.Sprintf("/u/%d/quizzes/%d", quiz.UserID, quiz.ID)),
 							QuizCard(quiz))
 					})),
 			),

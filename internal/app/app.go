@@ -3,6 +3,8 @@ package app
 import (
 	"net/http"
 	"oj/api"
+
+	//"oj/handlers/admin/quizzes"
 	"oj/handlers/bots"
 	"oj/handlers/chat"
 	"oj/handlers/connect"
@@ -15,16 +17,16 @@ import (
 	"oj/handlers/fun/chess"
 	"oj/handlers/fun/gradients"
 	"oj/handlers/fun/notebook"
-	"oj/handlers/fun/quizzes"
-	"oj/handlers/fun/quizzes/attempt"
-	"oj/handlers/fun/quizzes/attempt/completed"
-	"oj/handlers/fun/quizzes/quiz"
 	"oj/handlers/header"
 	"oj/handlers/humans"
 	"oj/handlers/me"
 	"oj/handlers/me/editme"
 	"oj/handlers/postoffice"
 	"oj/handlers/u"
+	"oj/handlers/u/quizzes/attempt"
+	"oj/handlers/u/quizzes/attempt/completed"
+	"oj/handlers/u/quizzes/create"
+	"oj/handlers/u/quizzes/show"
 	"oj/internal/ai"
 	"oj/internal/resources/parent"
 	"oj/internal/resources/stickers"
@@ -93,11 +95,22 @@ func (rs Service) Routes() chi.Router {
 	r.Get("/fun/chess/unselect", chess.Unselect)
 	//r.Get("/fun/chess/select/{r1}/{f1}/{r2}/{f2}", chess.Move)
 
-	r.Get("/fun/quizzes", quizzes.NewService(rs.Queries).Page)
-	r.Route("/fun/quizzes/{quizID}", quiz.NewService(rs.Queries).Router)
-	r.Get("/fun/quizzes/attempts/{attemptID}", attempt.NewService(rs.Queries).Page)
-	r.Get("/fun/quizzes/attempts/{attemptID}/done", completed.NewService(rs.Queries).Page)
-	r.Post("/fun/quizzes/attempts/{attemptID}/question/{questionID}/response", attempt.NewService(rs.Queries).PostResponse)
+	r.Route("/u/{userID}", func(r chi.Router) {
+		r.Route("/", u.NewService(rs.Queries).Router)
+
+		r.Route("/quizzes", func(r chi.Router) {
+			r.Route("/create", create.NewService(rs.Queries).Router)
+			r.Route("/{quizID}", func(r chi.Router) {
+				r.Route("/", show.NewService(rs.Queries).Router)
+
+				r.Route("/attempts/{attemptID}", func(r chi.Router) {
+					r.Get("/", attempt.NewService(rs.Queries).Page)
+					r.Get("/done", completed.NewService(rs.Queries).Page)
+					r.Post("/question/{questionID}/response", attempt.NewService(rs.Queries).PostResponse)
+				})
+			})
+		})
+	})
 
 	r.Group(func(r chi.Router) {
 		s := notebook.NewService(rs.Queries)
@@ -110,7 +123,7 @@ func (rs Service) Routes() chi.Router {
 
 	r.Mount("/bots", bots.Resource{Model: rs.Queries, AI: ai.New().Client}.Routes())
 
-	r.Route("/u/{userID}", u.NewService(rs.Queries).Router)
+	//r.Route("/u/{userID}", u.NewService(rs.Queries).Router)
 
 	r.Group(func(r chi.Router) {
 		s := chat.NewService(rs.Queries, rs.Conn)

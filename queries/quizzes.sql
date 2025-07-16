@@ -17,7 +17,7 @@ select * from quizzes where id = @id;
 update quizzes set name = @name, description = @description where id = @id returning *;
 
 -- name: CreateQuiz :one
-insert into quizzes(name,description) values(@name,@description) returning *;
+insert into quizzes(name,description,user_id) values(@name,@description,@user_id) returning *;
 
 -- name: PublishedUserQuizzes :many
 select * from quizzes where published = true and user_id = @user_id order by created_at desc;

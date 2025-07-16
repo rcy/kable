@@ -12,6 +12,9 @@ import (
 	"oj/internal/middleware/quizctx"
 
 	"github.com/go-chi/chi/v5"
+
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -21,12 +24,6 @@ type service struct {
 func NewService(q *api.Queries) *service {
 	return &service{Queries: q}
 }
-
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent)
-)
 
 func (s *service) Router(r chi.Router) {
 	r.Use(quizctx.NewService(s.Queries).Provider)
@@ -49,17 +46,24 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout           layout.Data
-		Quiz             api.Quiz
-		Questions        []api.Question
-		CreateAttemptURL string
-	}{
-		Layout:           l,
-		Quiz:             quiz,
-		Questions:        questions,
-		CreateAttemptURL: r.URL.Path + "/attempt",
-	})
+	layout.Layout(l,
+		l.User.Username,
+		h.Div(
+			h.Class("nes-container ghost"),
+			h.H1(
+				g.Text(quiz.Name),
+			),
+			h.Button(
+				g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/attempt", quiz.UserID, quiz.ID)),
+				h.Class("nes-btn is-success"),
+				g.Text("Start"),
+			),
+			h.A(
+				h.Class("nes-btn"),
+				h.Href(fmt.Sprintf("/u/%d#quizzes", quiz.UserID)),
+				g.Text("Back"),
+			),
+		)).Render(w)
 }
 
 func (s *service) createAttempt(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +80,6 @@ func (s *service) createAttempt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("HX-Redirect", fmt.Sprintf("/fun/quizzes/attempts/%d", attempt.ID))
+	w.Header().Add("HX-Redirect", fmt.Sprintf("/u/%d/quizzes/%d/attempts/%d", quiz.UserID, quiz.ID, attempt.ID))
 	w.WriteHeader(201)
 }
