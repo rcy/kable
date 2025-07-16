@@ -36,7 +36,7 @@ func (s *service) GetAvatars(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < count; i += 1 {
 		seed := fmt.Sprintf("%s-%d-%d", time.Now().Format(time.DateOnly), user.ID, i)
 		if seed != avis[0].Seed {
-			avis = append(avis, avatar.New(seed, avatar.AvataaarsStyle))
+			avis = append(avis, avatar.New(seed, avatar.DefaultStyle))
 		}
 	}
 
@@ -65,7 +65,7 @@ func (s *service) PutAvatar(w http.ResponseWriter, r *http.Request) {
 	seed := r.FormValue("Seed")
 
 	// TODO: use same style as existing
-	avi := avatar.New(seed, avatar.AvataaarsStyle)
+	avi := avatar.New(seed, avatar.DefaultStyle)
 
 	user, err := s.Queries.UpdateUserAvatar(ctx, api.UpdateUserAvatarParams{
 		ID:     user.ID,
