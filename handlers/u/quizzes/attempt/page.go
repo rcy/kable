@@ -7,6 +7,7 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/handlers/u/quizzes/view"
 	"oj/internal/middleware/auth"
 	"strconv"
 	"strings"
@@ -51,6 +52,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	author, err := s.Queries.UserByID(ctx, quiz.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	questionCount, err := s.Queries.QuestionCount(ctx, quiz.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("QuestionCount: %w", err), http.StatusInternalServerError)
@@ -86,9 +93,10 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		quiz.Name,
 		h.Div(
 			h.Class("page nes-container ghost"),
-			h.H1(g.Text(quiz.Name)),
+			view.QuizTitleEl(author, quiz),
 			//g.Text(fmt.Sprintf("%d = %d/%d", attempt.ID, responseCount, questionCount)),
 			h.Progress(
+				//h.Class("nes-progress"),
 				h.Style("width:100%"),
 				h.Max(fmt.Sprint(questionCount)),
 				h.Value(fmt.Sprint(responseCount)),

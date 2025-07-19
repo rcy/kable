@@ -77,6 +77,17 @@ func (q *Queries) Question(ctx context.Context, id int64) (Question, error) {
 	return i, err
 }
 
+const questionCount = `-- name: QuestionCount :one
+select count(*) from questions where quiz_id = $1
+`
+
+func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, questionCount, quizID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const quizQuestions = `-- name: QuizQuestions :many
 select id, created_at, quiz_id, text, answer from questions where quiz_id = $1
 `

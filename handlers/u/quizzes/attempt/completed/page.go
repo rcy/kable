@@ -7,6 +7,7 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/handlers/u/quizzes/view"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -49,6 +50,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	author, err := s.Queries.UserByID(ctx, quiz.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// questionCount, err := s.Queries.QuestionCount(ctx, quiz.ID)
 	// if err != nil {
 	// 	render.Error(w, fmt.Errorf("QuestionCount: %w", err), http.StatusInternalServerError)
@@ -67,14 +74,13 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 			h.Class("page nes-container ghost"),
 			h.Style("display: flex; flex-direction: column; gap: 2em"),
 			h.Div(
-				h.H1(
-					g.Text(fmt.Sprintf("%s Completed!", quiz.Name)),
-				),
+				view.QuizTitleEl(author, quiz),
 				h.Progress(
 					h.Style("width:100%"),
 					h.Max("1"),
 					h.Value("1"),
 				),
+				h.H1(g.Text("Completed!")),
 			),
 			h.Div(
 				h.Style("display:flex; flex-direction:column; gap: 1em;"),
@@ -110,7 +116,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 			),
 			h.Div(
 				h.Button(
-					g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/attempt", quiz.UserID, quiz.ID)),
+					g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/view/attempt", quiz.UserID, quiz.ID)),
 					h.Class("nes-btn is-success"),
 					g.Text("Try Again"),
 				),

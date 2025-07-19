@@ -30,8 +30,10 @@ func (s *service) Router(r chi.Router) {
 	r.Use(quizctx.NewService(s.Queries).Provider)
 	r.Get("/", s.page)
 	r.Patch("/", s.patchQuiz)
+	r.Delete("/", s.deleteQuiz)
 	r.Get("/edit", editQuiz)
-	r.Post("/toggle-published", s.togglePublished)
+	r.Post("/publish", s.publish)
+	r.Post("/unpublish", s.unpublish)
 	r.Get("/add-question", newQuestion)
 	r.Post("/add-question", s.postNewQuestion)
 	r.Get("/question/{questionID}/edit", s.editQuestion)
@@ -41,6 +43,7 @@ func (s *service) Router(r chi.Router) {
 func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
+	user := auth.FromContext(ctx)
 	quiz := quizctx.Value(ctx)
 
 	questions, err := s.Queries.QuizQuestions(ctx, quiz.ID)
@@ -52,61 +55,54 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	layout.Layout(l, quiz.Name,
 		h.Div(
 			h.Style("display:flex; flex-direction: column; gap: 2em; margin-bottom: 25vh"),
+			h.Div(
+				h.Class("nes-container"),
+				h.Style("background: #f7d51d; display:flex; flex-direction:column"),
+				h.P(
+					h.B(g.Text("This quiz is not shared, only you can see it.")),
+				),
+				h.P(
+					g.Text("Share it when you are ready to let your friends take the quiz!"),
+				),
+				h.Div(h.Style("display:flex; justify-content:space-between"),
+					h.Button(
+						g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/publish", quiz.UserID, quiz.ID)),
+						h.Class("nes-btn is-success"),
+						g.Text("Share with friends"),
+					),
+					h.Button(
+						g.Attr("hx-delete", fmt.Sprintf("/u/%d/quizzes/%d", user.ID, quiz.ID)),
+						g.Attr("hx-confirm", "Are you sure you want to delete this quiz?"),
+						h.Href(fmt.Sprintf("/u/%d/quizzes/%d", user.ID, quiz.ID)),
+						h.Class("nes-btn is-error"),
+						g.Text("Delete quiz"),
+					),
+				),
+			),
+
 			quizHeader(quiz),
 			h.Div(
 				h.ID("questions"),
 				h.Style("display:flex; flex-direction: column; gap:1em"),
 				g.Map(questions, func(quest api.Question) g.Node {
-					return question(quiz.UserID, quest)
+					return question(quiz.Published, quiz.UserID, quest)
 				}),
 			),
-			h.Button(
-				g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/add-question", quiz.UserID, quiz.ID)),
-				g.Attr("hx-target", "#questions"),
-				g.Attr("hx-swap", "beforeend"),
-				h.Class("nes-btn is-primary"),
-				g.Text("add question"),
+			g.If(!quiz.Published,
+				h.Div(
+					h.Button(
+						g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/add-question", quiz.UserID, quiz.ID)),
+						g.Attr("hx-target", "#questions"),
+						g.Attr("hx-swap", "beforeend"),
+						h.Class("nes-btn"),
+						g.Text("add a question"),
+					)),
 			),
 		)).Render(w)
 }
 
 func quizHeader(quiz api.Quiz) g.Node {
-	return h.Div(
-		h.Class("hx-target"),
-		g.If(!quiz.Published,
-			h.Div(
-				h.Class("nes-container"),
-				h.Style("background: #f7d51d; display:flex; justify-content:space-between"),
-				h.P(
-					g.Text("This quiz is not published — so only you can see it."),
-				),
-				h.Div(
-					h.Button(
-						g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/toggle-published", quiz.UserID, quiz.ID)),
-						g.Attr("hx-target", "closest .hx-target"),
-						g.Attr("hx-swap", "outerHTML"),
-						h.Class("nes-btn is-warning"),
-						g.Text("Publish"),
-					),
-				),
-			)),
-		g.If(quiz.Published,
-			h.Div(
-				h.Class("nes-container"),
-				h.Style("background: #92cc41; display:flex; justify-content:space-between"),
-				h.P(
-					g.Text("This quiz is published!"),
-				),
-				h.Div(
-					h.Button(
-						g.Attr("hx-post", fmt.Sprintf("/u/%d/quizzes/%d/toggle-published", quiz.UserID, quiz.ID)),
-						g.Attr("hx-target", "closest .hx-target"),
-						g.Attr("hx-swap", "outerHTML"),
-						h.Class("nes-btn is-success"),
-						g.Text("Unpublish"),
-					),
-				),
-			)),
+	return h.Div(h.Class("hx-target"),
 		h.Div(
 			h.Class("nes-container ghost"),
 			h.Style("margin-top: 1em; display:flex;justify-content:space-between"),
@@ -117,12 +113,14 @@ func quizHeader(quiz api.Quiz) g.Node {
 				),
 			),
 			h.Div(
-				h.Button(
-					g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/edit", quiz.UserID, quiz.ID)),
-					g.Attr("hx-swap", "outerHTML"),
-					g.Attr("hx-target", "closest .hx-target"),
-					h.Class("nes-btn"),
-					g.Text("edit"),
+				g.If(!quiz.Published,
+					h.Button(
+						g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/edit", quiz.UserID, quiz.ID)),
+						g.Attr("hx-swap", "outerHTML"),
+						g.Attr("hx-target", "closest .hx-target"),
+						h.Class("nes-btn"),
+						g.Text("edit name"),
+					),
 				),
 			),
 		),
@@ -130,7 +128,8 @@ func quizHeader(quiz api.Quiz) g.Node {
 }
 
 func editQuiz(w http.ResponseWriter, r *http.Request) {
-	quiz := quizctx.Value(r.Context())
+	ctx := r.Context()
+	quiz := quizctx.Value(ctx)
 
 	h.Div(
 		h.Class("nes-container is-dark"),
@@ -153,14 +152,16 @@ func editQuiz(w http.ResponseWriter, r *http.Request) {
 					h.Value(quiz.Name),
 				),
 			),
-			h.Button(
-				h.Class("nes-btn is-primary"),
-				g.Text("save"),
-			),
-			h.A(
-				h.Href(fmt.Sprintf("/admin/quizzes/%d", quiz.ID)),
-				h.Class("nes-btn"),
-				g.Text("cancel"),
+			h.Div(h.Style("display:flex;justify-content:space-between"),
+				h.Button(
+					h.Class("nes-btn is-primary"),
+					g.Text("save"),
+				),
+				// h.A(
+				// 	h.Href(fmt.Sprintf("/u/%d/quizzes/%d", quiz.UserID, quiz.ID)),
+				// 	h.Class("nes-btn"),
+				// 	g.Text("cancel"),
+				// ),
 			),
 		),
 	).Render(w)
@@ -183,19 +184,63 @@ func (s *service) patchQuiz(w http.ResponseWriter, r *http.Request) {
 	quizHeader(quiz).Render(w)
 }
 
-func (s *service) togglePublished(w http.ResponseWriter, r *http.Request) {
+func (s *service) deleteQuiz(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	quiz := quizctx.Value(ctx)
+	user := auth.FromContext(ctx)
+
+	err := s.Queries.DeleteQuiz(ctx, api.DeleteQuizParams{
+		QuizID: quiz.ID,
+		UserID: user.ID,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("DeleteQuiz: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("HX-Redirect", fmt.Sprintf("/u/%d#quizzes", user.ID))
+}
+
+func (s *service) publish(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	quiz := quizctx.Value(r.Context())
+
+	count, err := s.Queries.QuestionCount(ctx, quiz.ID)
+	if err != nil {
+		http.Error(w, "QuestionCount:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if count < 1 {
+		http.Error(w, "Quiz has no questions!", http.StatusBadRequest)
+		return
+	}
+
+	quiz, err = s.Queries.SetQuizPublished(ctx, api.SetQuizPublishedParams{
+		ID:        quiz.ID,
+		Published: true,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("SetQuizPublished: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("HX-Redirect", fmt.Sprintf("/u/%d/quizzes/%d/view", quiz.UserID, quiz.ID))
+}
+
+func (s *service) unpublish(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	quiz := quizctx.Value(r.Context())
 
 	quiz, err := s.Queries.SetQuizPublished(ctx, api.SetQuizPublishedParams{
 		ID:        quiz.ID,
-		Published: !quiz.Published,
+		Published: false,
 	})
 	if err != nil {
 		render.Error(w, fmt.Errorf("SetQuizPublished: %w", err), http.StatusInternalServerError)
 		return
 	}
-	quizHeader(quiz).Render(w)
+	w.Header().Add("HX-Redirect", fmt.Sprintf("/u/%d/quizzes/%d", quiz.UserID, quiz.ID))
 }
 
 func newQuestion(w http.ResponseWriter, r *http.Request) {
@@ -332,10 +377,10 @@ func (s *service) postNewQuestion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	question(quiz.UserID, quest).Render(w)
+	question(quiz.Published, quiz.UserID, quest).Render(w)
 }
 
-func question(userID int64, quest api.Question) g.Node {
+func question(published bool, userID int64, quest api.Question) g.Node {
 	return h.Div(
 		h.Class("nes-container ghost"),
 		h.Style("display:flex; justify-content:space-between"),
@@ -347,12 +392,14 @@ func question(userID int64, quest api.Question) g.Node {
 				g.Text("A: "+quest.Answer),
 			),
 		),
-		h.Button(
-			g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/question/%d/edit", userID, quest.QuizID, quest.ID)),
-			g.Attr("hx-swap", "outerHTML"),
-			g.Attr("hx-target", "closest div"),
-			h.Class("nes-btn"),
-			g.Text("edit"),
+		g.If(!published,
+			h.Button(
+				g.Attr("hx-get", fmt.Sprintf("/u/%d/quizzes/%d/question/%d/edit", userID, quest.QuizID, quest.ID)),
+				g.Attr("hx-swap", "outerHTML"),
+				g.Attr("hx-target", "closest div"),
+				h.Class("nes-btn"),
+				g.Text("edit question"),
+			),
 		),
 	)
 }
@@ -360,6 +407,7 @@ func question(userID int64, quest api.Question) g.Node {
 func (s *service) patchQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)
+	quiz := quizctx.Value(ctx)
 
 	questionID, _ := strconv.Atoi(chi.URLParam(r, "questionID"))
 	quest, err := s.Queries.Question(ctx, int64(questionID))
@@ -378,5 +426,5 @@ func (s *service) patchQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	question(user.ID, quest).Render(w)
+	question(quiz.Published, user.ID, quest).Render(w)
 }

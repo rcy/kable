@@ -123,6 +123,7 @@ type Quiz struct {
 	Description string
 	Published   bool
 	UserID      int64
+	IsDeleted   bool
 }
 
 type Response struct {

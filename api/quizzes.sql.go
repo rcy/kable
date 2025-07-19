@@ -10,7 +10,7 @@ import (
 )
 
 const allQuizzes = `-- name: AllQuizzes :many
-select id, created_at, name, description, published, user_id from quizzes order by created_at desc
+select id, created_at, name, description, published, user_id, is_deleted from quizzes where not is_deleted order by created_at desc
 `
 
 func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
@@ -29,6 +29,39 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 			&i.Description,
 			&i.Published,
 			&i.UserID,
+			&i.IsDeleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const allUserQuizzes = `-- name: AllUserQuizzes :many
+select id, created_at, name, description, published, user_id, is_deleted from quizzes where not is_deleted and user_id = $1 order by published desc
+`
+
+func (q *Queries) AllUserQuizzes(ctx context.Context, userID int64) ([]Quiz, error) {
+	rows, err := q.db.Query(ctx, allUserQuizzes, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Quiz
+	for rows.Next() {
+		var i Quiz
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Name,
+			&i.Description,
+			&i.Published,
+			&i.UserID,
+			&i.IsDeleted,
 		); err != nil {
 			return nil, err
 		}
@@ -41,7 +74,7 @@ func (q *Queries) AllQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const createQuiz = `-- name: CreateQuiz :one
-insert into quizzes(name,description,user_id) values($1,$2,$3) returning id, created_at, name, description, published, user_id
+insert into quizzes(name,description,user_id) values($1,$2,$3) returning id, created_at, name, description, published, user_id, is_deleted
 `
 
 type CreateQuizParams struct {
@@ -60,12 +93,27 @@ func (q *Queries) CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, e
 		&i.Description,
 		&i.Published,
 		&i.UserID,
+		&i.IsDeleted,
 	)
 	return i, err
 }
 
+const deleteQuiz = `-- name: DeleteQuiz :exec
+update quizzes set is_deleted = true where id = $1 and user_id = $2
+`
+
+type DeleteQuizParams struct {
+	QuizID int64
+	UserID int64
+}
+
+func (q *Queries) DeleteQuiz(ctx context.Context, arg DeleteQuizParams) error {
+	_, err := q.db.Exec(ctx, deleteQuiz, arg.QuizID, arg.UserID)
+	return err
+}
+
 const publishedQuizzes = `-- name: PublishedQuizzes :many
-select id, created_at, name, description, published, user_id from quizzes where published = true order by created_at desc
+select id, created_at, name, description, published, user_id, is_deleted from quizzes where not is_deleted and published order by created_at desc
 `
 
 func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
@@ -84,6 +132,7 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 			&i.Description,
 			&i.Published,
 			&i.UserID,
+			&i.IsDeleted,
 		); err != nil {
 			return nil, err
 		}
@@ -96,7 +145,7 @@ func (q *Queries) PublishedQuizzes(ctx context.Context) ([]Quiz, error) {
 }
 
 const publishedUserQuizzes = `-- name: PublishedUserQuizzes :many
-select id, created_at, name, description, published, user_id from quizzes where published = true and user_id = $1 order by created_at desc
+select id, created_at, name, description, published, user_id, is_deleted from quizzes where not is_deleted and published and user_id = $1 order by created_at desc
 `
 
 func (q *Queries) PublishedUserQuizzes(ctx context.Context, userID int64) ([]Quiz, error) {
@@ -115,6 +164,7 @@ func (q *Queries) PublishedUserQuizzes(ctx context.Context, userID int64) ([]Qui
 			&i.Description,
 			&i.Published,
 			&i.UserID,
+			&i.IsDeleted,
 		); err != nil {
 			return nil, err
 		}
@@ -126,19 +176,8 @@ func (q *Queries) PublishedUserQuizzes(ctx context.Context, userID int64) ([]Qui
 	return items, nil
 }
 
-const questionCount = `-- name: QuestionCount :one
-select count(*) from questions where quiz_id = $1
-`
-
-func (q *Queries) QuestionCount(ctx context.Context, quizID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, questionCount, quizID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const quiz = `-- name: Quiz :one
-select id, created_at, name, description, published, user_id from quizzes where id = $1
+select id, created_at, name, description, published, user_id, is_deleted from quizzes where not is_deleted and id = $1
 `
 
 func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
@@ -151,12 +190,13 @@ func (q *Queries) Quiz(ctx context.Context, id int64) (Quiz, error) {
 		&i.Description,
 		&i.Published,
 		&i.UserID,
+		&i.IsDeleted,
 	)
 	return i, err
 }
 
 const setQuizPublished = `-- name: SetQuizPublished :one
-update quizzes set published = $1 where id = $2 returning id, created_at, name, description, published, user_id
+update quizzes set published = $1 where not is_deleted and id = $2 returning id, created_at, name, description, published, user_id, is_deleted
 `
 
 type SetQuizPublishedParams struct {
@@ -174,12 +214,13 @@ func (q *Queries) SetQuizPublished(ctx context.Context, arg SetQuizPublishedPara
 		&i.Description,
 		&i.Published,
 		&i.UserID,
+		&i.IsDeleted,
 	)
 	return i, err
 }
 
 const updateQuiz = `-- name: UpdateQuiz :one
-update quizzes set name = $1, description = $2 where id = $3 returning id, created_at, name, description, published, user_id
+update quizzes set name = $1, description = $2 where id = $3 returning id, created_at, name, description, published, user_id, is_deleted
 `
 
 type UpdateQuizParams struct {
@@ -198,6 +239,7 @@ func (q *Queries) UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, e
 		&i.Description,
 		&i.Published,
 		&i.UserID,
+		&i.IsDeleted,
 	)
 	return i, err
 }

@@ -9,6 +9,7 @@ import (
 	"oj/handlers/layout"
 	"oj/handlers/me"
 	"oj/handlers/render"
+	"oj/internal/text"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -52,6 +53,12 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	connected := connection.RoleIn != "" && connection.RoleOut != ""
 
+	quizzes, err := s.Queries.PublishedUserQuizzes(ctx, pageUser.ID)
+	if err != nil {
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
+		return
+	}
+
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(
@@ -65,7 +72,8 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 			g.If(connected, h.A(
 				h.Class("nes-btn is-success"),
 				h.Href(fmt.Sprintf("/u/%d/chat", pageUser.ID)),
-				g.Text("Chat"),
+				g.Text(fmt.Sprintf("Chat with %s", text.Shorten(pageUser.Username, 8))),
 			)),
+			g.Iff(len(quizzes) > 0, func() g.Node { return me.QuizzesEl(0, quizzes) }),
 		)).Render(w)
 }

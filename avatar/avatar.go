@@ -7,6 +7,7 @@ import (
 const (
 	AvataaarsStyle = "avataaars"
 	RingsStyle     = "rings"
+	IconsStyle     = "icons"
 	DefaultStyle   = AvataaarsStyle
 )
 

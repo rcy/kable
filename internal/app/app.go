@@ -27,6 +27,7 @@ import (
 	"oj/handlers/u/quizzes/attempt/completed"
 	"oj/handlers/u/quizzes/create"
 	"oj/handlers/u/quizzes/show"
+	"oj/handlers/u/quizzes/view"
 	"oj/internal/ai"
 	"oj/internal/resources/parent"
 	"oj/internal/resources/stickers"
@@ -102,7 +103,7 @@ func (rs Service) Routes() chi.Router {
 			r.Route("/create", create.NewService(rs.Queries).Router)
 			r.Route("/{quizID}", func(r chi.Router) {
 				r.Route("/", show.NewService(rs.Queries).Router)
-
+				r.Route("/view", view.NewService(rs.Queries).Router)
 				r.Route("/attempts/{attemptID}", func(r chi.Router) {
 					r.Get("/", attempt.NewService(rs.Queries).Page)
 					r.Get("/done", completed.NewService(rs.Queries).Page)
