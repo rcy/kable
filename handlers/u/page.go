@@ -13,13 +13,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-)
 
-var (
-	//go:embed page.gohtml
-	pageContent string
-
-	pageTemplate = layout.MustParse(pageContent, me.CardContent, connect.ConnectionContent)
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
@@ -56,17 +52,20 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 	connected := connection.RoleIn != "" && connection.RoleOut != ""
 
-	d := struct {
-		Layout     layout.Data
-		User       api.User
-		Connection api.GetConnectionRow
-		Connected  bool
-	}{
-		Layout:     l,
-		User:       pageUser,
-		Connection: connection,
-		Connected:  connected,
-	}
-
-	render.Execute(w, pageTemplate, d)
+	layout.Layout(l,
+		l.User.Username,
+		h.Div(
+			g.Attr("hx-get", fmt.Sprintf("/u/%d", pageUser.ID)),
+			g.Attr("hx-trigger", "connectionChange from:body"),
+			g.Attr("hx-target", "body"),
+			h.Style("display:flex;flex-direction:column;gap:1em;"),
+			g.If(connect.ConnectionStatus(connection.RoleIn, connection.RoleOut) != "connected",
+				connect.ConnectionEl(connection.User, connection.RoleIn, connection.RoleOut)),
+			me.ProfileEl(pageUser, false),
+			g.If(connected, h.A(
+				h.Class("nes-btn is-success"),
+				h.Href(fmt.Sprintf("/u/%d/chat", pageUser.ID)),
+				g.Text("Chat"),
+			)),
+		)).Render(w)
 }

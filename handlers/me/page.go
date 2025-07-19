@@ -54,7 +54,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
-			h.Section(profile(l.User)),
+			h.Section(ProfileEl(l.User, true)),
 
 			h.Section(
 				h.Style("display:flex; flex-direction:column; gap: 1em"),
@@ -105,7 +105,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		)).Render(w)
 }
 
-func profile(user api.User) g.Node {
+func ProfileEl(user api.User, canEdit bool) g.Node {
 	return h.Div(
 		h.ID("card"),
 		h.Class("nes-container ghost"),
@@ -125,11 +125,11 @@ func profile(user api.User) g.Node {
 					),
 				),
 			),
-			h.Div(h.A(
+			g.If(canEdit, h.Div(h.A(
 				h.Href("/me/edit"),
 				h.Class("nes-btn is-primary"),
 				g.Text("Edit My Profile"),
-			)),
+			))),
 		),
 		about(user),
 	)

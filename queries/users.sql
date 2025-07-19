@@ -39,7 +39,7 @@ select users.* from kids_parents join users on kids_parents.parent_id = users.id
 select users.* from kids_parents join users on kids_parents.kid_id = users.id where kids_parents.parent_id = @parent_id order by kids_parents.created_at desc;
 
 -- name: GetConnection :one
-select u.*,
+select sqlc.embed(u),
        case
            when f1.a_id = @a_id then f1.b_role
            else ''
@@ -55,7 +55,7 @@ where
   u.id = @id;
 
 -- name: GetCurrentAndPotentialParentConnections :many
-select u.*,
+select sqlc.embed(u),
        case
            when f1.a_id = @a_id then f1.b_role
            else ''

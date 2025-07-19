@@ -123,36 +123,26 @@ type GetConnectionParams struct {
 }
 
 type GetConnectionRow struct {
-	ID                  int64
-	CreatedAt           pgtype.Timestamptz
-	Username            string
-	Email               pgtype.Text
-	AvatarUrlDeprecated string
-	IsParent            bool
-	Bio                 string
-	BecomeUserID        pgtype.Int8
-	Admin               bool
-	Gradient            gradient.Gradient
-	Avatar              avatar.Avatar
-	RoleOut             string
-	RoleIn              string
+	User    User
+	RoleOut string
+	RoleIn  string
 }
 
 func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error) {
 	row := q.db.QueryRow(ctx, getConnection, arg.AID, arg.ID)
 	var i GetConnectionRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.Username,
-		&i.Email,
-		&i.AvatarUrlDeprecated,
-		&i.IsParent,
-		&i.Bio,
-		&i.BecomeUserID,
-		&i.Admin,
-		&i.Gradient,
-		&i.Avatar,
+		&i.User.ID,
+		&i.User.CreatedAt,
+		&i.User.Username,
+		&i.User.Email,
+		&i.User.AvatarUrlDeprecated,
+		&i.User.IsParent,
+		&i.User.Bio,
+		&i.User.BecomeUserID,
+		&i.User.Admin,
+		&i.User.Gradient,
+		&i.User.Avatar,
 		&i.RoleOut,
 		&i.RoleIn,
 	)
@@ -220,19 +210,9 @@ limit 128
 `
 
 type GetCurrentAndPotentialParentConnectionsRow struct {
-	ID                  int64
-	CreatedAt           pgtype.Timestamptz
-	Username            string
-	Email               pgtype.Text
-	AvatarUrlDeprecated string
-	IsParent            bool
-	Bio                 string
-	BecomeUserID        pgtype.Int8
-	Admin               bool
-	Gradient            gradient.Gradient
-	Avatar              avatar.Avatar
-	RoleOut             string
-	RoleIn              string
+	User    User
+	RoleOut string
+	RoleIn  string
 }
 
 func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, aID int64) ([]GetCurrentAndPotentialParentConnectionsRow, error) {
@@ -245,17 +225,17 @@ func (q *Queries) GetCurrentAndPotentialParentConnections(ctx context.Context, a
 	for rows.Next() {
 		var i GetCurrentAndPotentialParentConnectionsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.Username,
-			&i.Email,
-			&i.AvatarUrlDeprecated,
-			&i.IsParent,
-			&i.Bio,
-			&i.BecomeUserID,
-			&i.Admin,
-			&i.Gradient,
-			&i.Avatar,
+			&i.User.ID,
+			&i.User.CreatedAt,
+			&i.User.Username,
+			&i.User.Email,
+			&i.User.AvatarUrlDeprecated,
+			&i.User.IsParent,
+			&i.User.Bio,
+			&i.User.BecomeUserID,
+			&i.User.Admin,
+			&i.User.Gradient,
+			&i.User.Avatar,
 			&i.RoleOut,
 			&i.RoleIn,
 		); err != nil {
