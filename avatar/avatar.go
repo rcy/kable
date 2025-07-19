@@ -5,10 +5,12 @@ import (
 )
 
 const (
-	AvataaarsStyle = "avataaars"
-	RingsStyle     = "rings"
-	IconsStyle     = "icons"
-	DefaultStyle   = AvataaarsStyle
+	AdventurerStyle = "adventurer"
+	AvataaarsStyle  = "avataaars"
+	IconsStyle      = "icons"
+	RingsStyle      = "rings"
+
+	DefaultStyle = AdventurerStyle
 )
 
 type Avatar struct {
