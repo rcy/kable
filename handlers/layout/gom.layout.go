@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 	"oj/api"
+	"oj/internal/text"
 
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -42,10 +43,6 @@ func Layout(data Data, title string, main g.Node) g.Node {
 				h.Name("viewport"),
 				h.Content("width=device-width, initial-scale=1"),
 			),
-		),
-		h.Body(
-			h.Style("height: 100%"),
-			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Script(g.Raw(fmt.Sprintf(`
 (function(){
   const es = new EventSource("/es/user-%d");
@@ -61,19 +58,31 @@ func Layout(data Data, title string, main g.Node) g.Node {
 				h.ID("beeper"),
 				h.Src("/assets/chat-alert.mp3"),
 			),
+		),
+		h.Body(
+			h.Style("height: 100%"),
+			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Div(
-				h.Style("height: 100%;display:flex; flex-direction:column; gap:1em"),
+				h.Style("height: 100%;display:flex; flex-direction:column"),
 				header(data.UnreadCount, data.User),
 				h.Div(
 					h.Style("flex:auto; height:100%; overflow: auto;"),
 					h.Main(
 						h.Style("max-width: 960px; margin: 0 auto;"),
+						errorEl(),
 						main,
 					),
 				),
 			),
 		),
 	)
+}
+
+func errorEl() g.Node {
+	return h.Script(g.Raw(`
+		document.body.addEventListener('htmx:responseError', function(event) {
+			window.alert(event.detail.xhr.responseText)
+		});`))
 }
 
 func style(background string) string {
@@ -100,52 +109,47 @@ header a:hover {
 }
 
 func header(unreadCount int, user api.User) g.Node {
-	return h.HTML(
-		h.Head(),
-		h.Body(
-			h.Header(
-				g.Attr("hx-get", "/header"),
-				g.Attr("hx-trigger", "USER_UPDATE from:body"),
-				g.Attr("hx-swap", "outerHTML"),
-				h.Style("background: rgba(0,0,0,.9); color:white;"),
+	return h.Header(
+		g.Attr("hx-get", "/header"),
+		g.Attr("hx-trigger", "USER_UPDATE from:body"),
+		g.Attr("hx-swap", "outerHTML"),
+		h.Style("background: rgba(0,0,0,.9); color:white;"),
+		h.Div(
+			h.Style("max-width: 960px; margin: 0 auto;"),
+			h.Div(
+				h.Style("padding: 1em 0 1em"),
 				h.Div(
-					h.Style("max-width: 960px; margin: 0 auto;"),
-					h.Div(
-						h.Style("padding: 1em 0 1em"),
-						h.Div(
-							h.Style("display:flex;gap:4px;align-items:center;justify-content:space-between"),
-							h.A(
-								h.Href("/me/humans"),
-								g.Text("Humans"),
-							),
-							h.A(
-								h.Href("/bots"),
-								g.Text("Robots"),
-							),
-							h.A(
-								h.Href("/fun"),
-								g.Text("Activities"),
-							),
-							h.A(
-								h.Href("/me"),
-								h.Style("display:flex; align-items: center; gap:6px"),
-								g.If(unreadCount > 0,
-									h.Span(
-										h.Style("background:red; padding: 0px 4px"),
-										h.Img(
-											h.Style("width: 1em"),
-											h.Src("/assets/126567_mail_email_send_contact_icon.svg"),
-										),
-									),
-								),
-								h.Span(
-									g.Text(user.Username),
-								),
+					h.Style("display:flex;gap:4px;align-items:center;justify-content:space-between"),
+					h.A(
+						h.Href("/me/humans"),
+						g.Text("Humans"),
+					),
+					h.A(
+						h.Href("/bots"),
+						g.Text("Robots"),
+					),
+					h.A(
+						h.Href("/fun"),
+						g.Text("Activities"),
+					),
+					h.A(
+						h.Href("/me"),
+						h.Style("display:flex; align-items: center; gap:6px"),
+						g.If(unreadCount > 0,
+							h.Span(
+								h.Style("background:red; padding: 0px 4px"),
 								h.Img(
-									h.Src(user.AvatarUrlDeprecated),
-									h.Height("24px"),
+									h.Style("width: 1em"),
+									h.Src("/assets/126567_mail_email_send_contact_icon.svg"),
 								),
 							),
+						),
+						h.Span(
+							g.Text(text.Shorten(user.Username, 8)),
+						),
+						h.Img(
+							h.Src(user.Avatar.URL()),
+							h.Height("24px"),
 						),
 					),
 				),

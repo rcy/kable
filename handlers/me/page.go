@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
+	"oj/avatar"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/internal/text"
 	"oj/md"
 	"oj/templatehelpers"
 
@@ -43,10 +45,16 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	quizzes, err := s.Queries.AllUserQuizzes(ctx, l.User.ID)
+	if err != nil {
+		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
+		return
+	}
+
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
-			h.Section(profile(l.User)),
+			h.Section(ProfileEl(l.User, true)),
 
 			h.Section(
 				h.Style("display:flex; flex-direction:column; gap: 1em"),
@@ -63,6 +71,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 					})),
 			),
 
+			QuizzesEl(l.User.ID, quizzes),
 			h.Div(
 				h.Style("margin-bottom: 50vh"),
 			),
@@ -86,7 +95,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		)).Render(w)
 }
 
-func profile(user api.User) g.Node {
+func ProfileEl(user api.User, canEdit bool) g.Node {
 	return h.Div(
 		h.ID("card"),
 		h.Class("nes-container ghost"),
@@ -106,11 +115,11 @@ func profile(user api.User) g.Node {
 					),
 				),
 			),
-			h.Div(h.A(
+			g.If(canEdit, h.Div(h.A(
 				h.Href("/me/edit"),
 				h.Class("nes-btn is-primary"),
 				g.Text("Edit My Profile"),
-			)),
+			))),
 		),
 		about(user),
 	)
@@ -183,13 +192,48 @@ func UserCard(friend api.User, withUsername bool) g.Node {
 			h.Img(h.Width("128px"), h.Src(friend.Avatar.URL()))),
 		g.If(withUsername,
 			h.Div(h.Style("background: black; color: white"),
-				g.Text(shorten(friend.Username, 8)))))
+				g.Text(text.Shorten(friend.Username, 8)))))
 }
 
-// Return first n characters of text
-func shorten(text string, n int) string {
-	if len(text) < n {
-		return text
+func IfElse(condition bool, n1 g.Node, n2 g.Node) g.Node {
+	if condition {
+		return n1
 	}
-	return text[:n]
+	return n2
+}
+
+func QuizCard(quiz api.Quiz) g.Node {
+	avi := avatar.New(fmt.Sprint(quiz.ID), avatar.IconsStyle)
+
+	return IfElse(quiz.Published,
+		h.Div(h.Style("display:flex; justify-content:space-between"),
+			h.Div(h.Style("display:flex; gap:1em; align-items: center;"),
+				h.Img(h.Width("32px"), h.Src(avi.URL())),
+				h.A(
+					h.Href(fmt.Sprintf("/u/%d/quizzes/%d/view", quiz.UserID, quiz.ID)),
+					g.Text(quiz.Name),
+				)),
+		),
+		// else
+		h.Div(h.Style("display:flex; justify-content:space-between"),
+			h.Div(h.Style("display:flex; gap:1em; align-items: center;"),
+				h.A(
+					h.Href(fmt.Sprintf("/u/%d/quizzes/%d", quiz.UserID, quiz.ID)),
+					g.Text("Edit "+quiz.Name),
+				)),
+		),
+	)
+}
+
+func QuizzesEl(userID int64, quizzes []api.Quiz) g.Node {
+	return h.Section(h.ID("quizzes"),
+		h.Div(h.Class("nes-container ghost"), h.Style("display:flex; flex-direction:column; gap:1em"),
+			h.Div(h.Style("display:flex; justify-content:space-between"),
+				h.H1(g.Text("Quizzes")),
+				g.If(userID != 0,
+					h.A(h.Class("nes-btn"), h.Href(fmt.Sprintf("/u/%d/quizzes/create", userID)), g.Text("Create Quiz")))),
+			g.Map(quizzes, func(quiz api.Quiz) g.Node {
+				return QuizCard(quiz)
+			})),
+	)
 }

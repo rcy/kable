@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
-	"oj/handlers/admin/quizzes/create"
-	"oj/handlers/admin/quizzes/show"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 
@@ -24,8 +22,6 @@ func NewService(q *api.Queries) *service {
 
 func (s *service) Router(r chi.Router) {
 	r.Get("/", s.page)
-	r.Route("/create", create.NewService(s.Queries).Router)
-	r.Route("/{quizID}", show.NewService(s.Queries).Router)
 }
 
 var (

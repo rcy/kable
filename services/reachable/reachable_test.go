@@ -33,7 +33,7 @@ func TestReachableKids(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error %s", err)
 	}
-	if !slices.ContainsFunc(connections, func(c api.GetConnectionRow) bool { return c.Username == "bob jr" }) {
+	if !slices.ContainsFunc(connections, func(c api.GetConnectionRow) bool { return c.User.Username == "bob jr" }) {
 		t.Errorf("expected bob jr to be reachable from alice jr")
 	}
 	if len(connections) != 1 {
@@ -45,7 +45,7 @@ func TestReachableKids(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error %s", err)
 	}
-	if !slices.ContainsFunc(connections, func(c api.GetConnectionRow) bool { return c.Username == "alice jr" }) {
+	if !slices.ContainsFunc(connections, func(c api.GetConnectionRow) bool { return c.User.Username == "alice jr" }) {
 		t.Errorf("expected alice jr to be reachable from bob jr")
 	}
 	if len(connections) != 1 {

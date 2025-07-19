@@ -19,3 +19,5 @@ update questions set text = @text, answer = @answer where id = @id returning *;
 -- name: QuizQuestions :many
 select * from questions where quiz_id = @quiz_id;
 
+-- name: QuestionCount :one
+select count(*) from questions where quiz_id = @quiz_id;
