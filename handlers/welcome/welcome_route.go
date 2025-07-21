@@ -130,7 +130,7 @@ func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 	// email code to user
 	err = email.Send(
 		fmt.Sprintf("Parent sign in code: %s", code),
-		fmt.Sprintf("Your Kable verification code is %s", code),
+		fmt.Sprintf("Your JuiceBox verification code is %s", code),
 		address)
 	if err != nil {
 		render.Error(w, fmt.Errorf("Error emailing code: %w", err), 500)
@@ -201,7 +201,7 @@ func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 	for _, parent := range parents {
 		err = email.Send(
 			fmt.Sprintf("Code for %s is %s", username, code),
-			fmt.Sprintf("Your child, %s, is trying to login to Kable.  The verification code is %s.",
+			fmt.Sprintf("Your child, %s, is trying to login to JuiceBox.  The verification code is %s.",
 				username, code),
 			parent.Email.String)
 		if err != nil {

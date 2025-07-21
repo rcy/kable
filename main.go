@@ -50,7 +50,7 @@ func main() {
 		}
 	}()
 
-	err = email.Send("kable startup", "application started", os.Getenv("DEV_EMAIL"))
+	err = email.Send("juicebox startup", "application started", os.Getenv("DEV_EMAIL"))
 	if err != nil {
 		log.Fatalf("failed to send startup email: %s", err)
 	}
