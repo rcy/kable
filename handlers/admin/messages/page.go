@@ -7,9 +7,12 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/templatehelpers"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -25,12 +28,6 @@ func (s *service) Router(r chi.Router) {
 	r.Delete("/{messageID}", s.deleteMessage)
 }
 
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent, pageContent)
-)
-
 func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -42,13 +39,61 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout   layout.Data
-		Messages []api.AdminRecentMessagesRow
-	}{
-		Layout:   l,
-		Messages: messages,
-	})
+	layout.Layout(l, "recent messages",
+		h.Div(
+			h.Class("nes-container ghost"),
+			h.H1(
+				g.Text("recent messages"),
+			),
+			h.Table(
+				h.Class("nes-table is-bordered is-centered"),
+				h.THead(
+					h.Tr(
+						h.Th(
+							g.Text("id"),
+						),
+						h.Th(
+							g.Text("r"),
+						),
+						h.Th(
+							g.Text("sender"),
+						),
+						h.Th(
+							g.Text("message body"),
+						),
+						h.Th(
+							g.Text("sent"),
+						),
+						h.Th(),
+					),
+				),
+				h.TBody(
+					g.Map(messages, func(msg api.AdminRecentMessagesRow) g.Node {
+						return messageRowEl(msg.Message, msg.User)
+					}),
+				),
+			)),
+	).Render(w)
+}
+
+func messageRowEl(message api.Message, sender api.User) g.Node {
+	return h.Tr(
+		h.Td(g.Text(fmt.Sprint(message.ID))),
+		h.Td(g.Text(fmt.Sprint(message.RoomID))),
+		h.Td(h.Style("text-wrap:wrap"), g.Text(fmt.Sprintf("%s:%d", sender.Username, sender.ID))),
+		h.Td(g.Text(message.Body)),
+		h.Td(g.Text(templatehelpers.Ago(message.CreatedAt))),
+		h.Td(
+			h.Button(
+				g.Attr("hx-delete", "/admin/messages/{{.ID}}"),
+				g.Attr("hx-confirm", fmt.Sprintf("delete %s?", message.Body)),
+				g.Attr("hx-target", "closest tr"),
+				g.Attr("hx-swap", "outerHTML"),
+				h.Class("nes-btn"),
+				g.Text("delete"),
+			),
+		),
+	)
 }
 
 func (s *service) deleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -61,5 +106,5 @@ func (s *service) deleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.ExecuteNamed(w, pageTemplate, "message-row", message)
+	messageRowEl(message, api.User{}).Render(w)
 }

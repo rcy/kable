@@ -10,10 +10,7 @@ limit 128;
 select * from messages where id = @id;
 
 -- name: AdminRecentMessages :many
-select
-        m.*,
-        sender.username as sender_username,
-        sender.avatar as sender_avatar
+select sqlc.embed(m), sqlc.embed(sender)
  from messages m
  join users sender on m.sender_id = sender.id
  order by m.created_at desc
