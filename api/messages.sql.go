@@ -7,9 +7,6 @@ package api
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
-	"oj/avatar"
 )
 
 const adminDeleteMessage = `-- name: AdminDeleteMessage :one
@@ -33,10 +30,7 @@ func (q *Queries) AdminDeleteMessage(ctx context.Context, id int64) (Message, er
 }
 
 const adminRecentMessages = `-- name: AdminRecentMessages :many
-select
-        m.id, m.created_at, m.sender_id, m.room_id, m.body,
-        sender.username as sender_username,
-        sender.avatar as sender_avatar
+select m.id, m.created_at, m.sender_id, m.room_id, m.body, sender.id, sender.created_at, sender.username, sender.email, sender.avatar_url_deprecated, sender.is_parent, sender.bio, sender.become_user_id, sender.admin, sender.gradient, sender.avatar
  from messages m
  join users sender on m.sender_id = sender.id
  order by m.created_at desc
@@ -44,13 +38,8 @@ select
 `
 
 type AdminRecentMessagesRow struct {
-	ID             int64
-	CreatedAt      pgtype.Timestamptz
-	SenderID       int64
-	RoomID         int64
-	Body           string
-	SenderUsername string
-	SenderAvatar   avatar.Avatar
+	Message Message
+	User    User
 }
 
 func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessagesRow, error) {
@@ -63,13 +52,22 @@ func (q *Queries) AdminRecentMessages(ctx context.Context) ([]AdminRecentMessage
 	for rows.Next() {
 		var i AdminRecentMessagesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.SenderID,
-			&i.RoomID,
-			&i.Body,
-			&i.SenderUsername,
-			&i.SenderAvatar,
+			&i.Message.ID,
+			&i.Message.CreatedAt,
+			&i.Message.SenderID,
+			&i.Message.RoomID,
+			&i.Message.Body,
+			&i.User.ID,
+			&i.User.CreatedAt,
+			&i.User.Username,
+			&i.User.Email,
+			&i.User.AvatarUrlDeprecated,
+			&i.User.IsParent,
+			&i.User.Bio,
+			&i.User.BecomeUserID,
+			&i.User.Admin,
+			&i.User.Gradient,
+			&i.User.Avatar,
 		); err != nil {
 			return nil, err
 		}
