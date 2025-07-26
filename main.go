@@ -28,12 +28,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	// conn, err := pool.Acquire(ctx)
-	// if err != nil {
-	// 	log.Fatalf("Could not aquire connection", err)
-	// }
-	// defer conn.Release()
-
 	err = worker.Start(context.Background(), api.New(pool), pool)
 	if err != nil {
 		log.Fatalf("could not start worker: %s", err)
