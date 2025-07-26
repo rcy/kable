@@ -24,7 +24,6 @@ import (
 	"oj/handlers/postoffice"
 	"oj/handlers/u"
 	"oj/handlers/u/quizzes/attempt"
-	"oj/handlers/u/quizzes/attempt/completed"
 	"oj/handlers/u/quizzes/create"
 	"oj/handlers/u/quizzes/show"
 	"oj/handlers/u/quizzes/view"
@@ -105,9 +104,10 @@ func (rs Service) Routes() chi.Router {
 				r.Route("/", show.NewService(rs.Queries).Router)
 				r.Route("/view", view.NewService(rs.Queries).Router)
 				r.Route("/attempts/{attemptID}", func(r chi.Router) {
-					r.Get("/", attempt.NewService(rs.Queries).Page)
-					r.Get("/done", completed.NewService(rs.Queries).Page)
-					r.Post("/question/{questionID}/response", attempt.NewService(rs.Queries).PostResponse)
+					s := attempt.NewService(rs.Queries)
+					r.Get("/", s.Page)
+					r.Get("/done", s.CompletedPage)
+					r.Post("/question/{questionID}/response", s.PostResponse)
 				})
 			})
 		})
