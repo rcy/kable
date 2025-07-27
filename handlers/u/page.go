@@ -123,8 +123,6 @@ func (s *service) HandleChessChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("pgn: %v\n", string(pgn))
-
 	match, err := s.Queries.CreateChessMatch(ctx, api.CreateChessMatchParams{
 		WhiteUserID: currentUser.ID,
 		BlackUserID: int64(pageUserID),
@@ -135,7 +133,5 @@ func (s *service) HandleChessChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("match: %v\n", match)
-
-	//w.Header().Add("HX-Redirect", fmt.Sprintf("/u/%d/quizzes/%d/attempts/%d", quiz.UserID, quiz.ID, attempt.ID))
+	w.Header().Add("HX-Redirect", link.ChessMatch(match.ID))
 }
