@@ -35,7 +35,7 @@ func (s *service) Provider(next http.Handler) http.Handler {
 		quiz, err := s.Queries.Quiz(ctx, int64(quizID))
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				render.NotFound(w)
+				render.NotFound(w, r)
 				return
 			}
 			render.Error(w, fmt.Errorf("Quiz: %w", err), http.StatusInternalServerError)

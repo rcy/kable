@@ -15,7 +15,7 @@ var (
 )
 
 func Error(w http.ResponseWriter, err error, code int) {
-	log.Printf("%d: %s", code, err)
+	log.Printf("render.Error: %d: %s", code, err)
 	w.WriteHeader(code)
 	Execute(w, t, struct {
 		Message string
@@ -26,6 +26,7 @@ func Error(w http.ResponseWriter, err error, code int) {
 	})
 }
 
-func NotFound(w http.ResponseWriter) {
+func NotFound(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("NotFound:", r.Header)
 	Error(w, fmt.Errorf("Oops, we couldn't find that page!"), http.StatusNotFound)
 }

@@ -9,11 +9,14 @@ import (
 	"oj/handlers/layout"
 	"oj/handlers/me"
 	"oj/handlers/render"
+	"oj/internal/link"
+	"oj/internal/middleware/auth"
 	"oj/internal/text"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/notnil/chess"
 
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -23,8 +26,8 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
 
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	pageUser, err := s.Queries.UserByID(ctx, int64(userID))
+	pageUserID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
+	pageUser, err := s.Queries.UserByID(ctx, int64(pageUserID))
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("UserByID: %w", err), http.StatusNotFound)
@@ -59,6 +62,17 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	chessMatches, err := s.Queries.ChessMatchesBetweenUsers(ctx, api.ChessMatchesBetweenUsersParams{
+		User1ID: l.User.ID,
+		User2ID: pageUser.ID,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("chessMatches", chessMatches)
+
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(
@@ -74,6 +88,53 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				h.Href(fmt.Sprintf("/u/%d/chat", pageUser.ID)),
 				g.Text(fmt.Sprintf("Chat with %s", text.Shorten(pageUser.Username, 8))),
 			)),
-			g.Iff(len(quizzes) > 0, func() g.Node { return me.QuizzesEl(0, quizzes) }),
+			// chess
+			chessButton(l.User, pageUser, chessMatches),
+
+			g.If(len(quizzes) > 0, me.QuizzesEl(0, quizzes)),
 		)).Render(w)
+}
+
+func chessButton(currentUser api.User, user api.User, matches []api.ChessMatch) g.Node {
+	if len(matches) == 0 {
+		if !currentUser.Admin {
+			return g.Group{}
+		}
+		return h.Button(
+			g.Attr("hx-post", link.User(user.ID, "chess-challenge")),
+			h.Class("nes-btn"), g.Text(fmt.Sprintf("Challenge %s to a game of chess", user.Username)))
+	}
+
+	// limit to 1 match only for now
+	match := matches[0]
+
+	return h.A(
+		h.Class("nes-btn is-success"), g.Text("View chess match"),
+		h.Href(link.ChessMatch(match.ID)))
+}
+
+func (s *service) HandleChessChallenge(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	currentUser := auth.FromContext(ctx)
+	pageUserID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
+
+	game := chess.NewGame()
+
+	pgn, err := game.MarshalText()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	match, err := s.Queries.CreateChessMatch(ctx, api.CreateChessMatchParams{
+		WhiteUserID: currentUser.ID,
+		BlackUserID: int64(pageUserID),
+		Pgn:         string(pgn),
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("HX-Redirect", link.ChessMatch(match.ID))
 }

@@ -27,6 +27,15 @@ type Bot struct {
 	Published   bool
 }
 
+type ChessMatch struct {
+	ID          int64
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	WhiteUserID int64
+	BlackUserID int64
+	Pgn         string
+}
+
 type Code struct {
 	ID        int64
 	CreatedAt pgtype.Timestamptz
