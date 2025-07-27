@@ -18,11 +18,11 @@ func (s *service) HandleMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	board, err := gameBoardFromMatch(match, nil)
+	board, err := gameStateFromMatch(match, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	layout.Layout(l, "chess club", chessPageEl(board)).Render(w)
+	layout.Layout(l, "chess club", chessPageNode(board)).Render(w)
 }

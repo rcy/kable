@@ -17,16 +17,14 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
-type Board [8][8]Square
-
-type GameBoard struct {
-	Board      Board
+type GameState struct {
+	Board      [8][8]UISquare
 	Game       *chess.Game
 	ValidMoves []*chess.Move
 	MatchID    int64
 }
 
-type Square struct {
+type UISquare struct {
 	SVGPiece string
 	Selected bool
 	Action   string
@@ -36,11 +34,11 @@ type Square struct {
 	MatchID  int64
 }
 
-func (s Square) Occupied() bool {
+func (s UISquare) Occupied() bool {
 	return s.SVGPiece != ""
 }
 
-func (s Square) Render(w io.Writer) error {
+func (s UISquare) Render(w io.Writer) error {
 	white := (s.File+s.Rank)%2 == 0
 
 	var background string = "rgba(100,100,100,1)" // default black
@@ -80,12 +78,12 @@ func (s Square) Render(w io.Writer) error {
 	).Render(w)
 }
 
-func (gb GameBoard) Render(w io.Writer) error {
+func (s GameState) Render(w io.Writer) error {
 	rows := make([][]g.Node, 0, 8)
 	for rank := 0; rank < 8; rank += 1 {
 		row := make([]g.Node, 0, 8)
 		for file := 0; file < 8; file += 1 {
-			row = append(row, gb.Board[rank][file])
+			row = append(row, s.Board[rank][file])
 		}
 		rows = append(rows, row)
 	}
@@ -102,15 +100,15 @@ func (gb GameBoard) Render(w io.Writer) error {
 	).Render(w)
 }
 
-func chessPageEl(gameboard *GameBoard) g.Node {
+func chessPageNode(gameState *GameState) g.Node {
 	return h.Div(
 		h.H1(g.Text("chess club")),
 		h.Div(h.ID("board-container"), h.Style("height: 80vh; width: 80vh;"),
-			gameboard,
+			gameState,
 		))
 }
 
-func gameBoardFromMatch(match api.ChessMatch, selectedSquare *Square) (*GameBoard, error) {
+func gameStateFromMatch(match api.ChessMatch, selectedSquare *UISquare) (*GameState, error) {
 	reader := strings.NewReader(match.Pgn)
 	fn, err := chess.PGN(reader)
 	if err != nil {
@@ -119,30 +117,7 @@ func gameBoardFromMatch(match api.ChessMatch, selectedSquare *Square) (*GameBoar
 	game := chess.NewGame(fn)
 
 	pos := game.Position()
-	gb := gameBoardFromSquareMap(match.ID, game, pos.Board().SquareMap(), selectedSquare)
 
-	moves := game.ValidMoves()
-	if selectedSquare == nil {
-		gb.ValidMoves = moves
-	} else {
-		selectedSquare := chess.Square((7-selectedSquare.Rank)*8 + selectedSquare.File)
-		for _, move := range moves {
-			if move.S1() == selectedSquare {
-				gb.ValidMoves = append(gb.ValidMoves, move)
-			}
-		}
-
-		for _, move := range gb.ValidMoves {
-			target := move.S2()
-			square := &gb.Board[7-target/8][target%8]
-			square.Dot = true
-			square.Action = fmt.Sprintf("move?s1=%d&s2=%d", move.S1(), move.S2())
-		}
-	}
-
-	return &gb, nil
-}
-func gameBoardFromSquareMap(matchID int64, game *chess.Game, squareMap map[chess.Square]chess.Piece, selected *Square) GameBoard {
 	svgPiece := [13]string{
 		"", // empty piece
 		"/assets/chess/wK.svg",
@@ -159,20 +134,22 @@ func gameBoardFromSquareMap(matchID int64, game *chess.Game, squareMap map[chess
 		"/assets/chess/bP.svg",
 	}
 
-	gb := GameBoard{Game: game}
+	state := GameState{Game: game}
+
+	squareMap := pos.Board().SquareMap()
 
 	for i := 0; i < 64; i += 1 {
 		piece := squareMap[chess.Square(i)]
 		rank := 7 - i/8
 		file := i % 8
-		square := &gb.Board[rank][file]
+		square := &state.Board[rank][file]
 		square.SVGPiece = svgPiece[piece]
 
 		square.Rank = rank
 		square.File = file
-		square.MatchID = matchID
+		square.MatchID = match.ID
 
-		if selected != nil && selected.Rank == rank && selected.File == file {
+		if selectedSquare != nil && selectedSquare.Rank == rank && selectedSquare.File == file {
 			square.Action = "unselect"
 			square.Selected = true
 		} else {
@@ -180,7 +157,26 @@ func gameBoardFromSquareMap(matchID int64, game *chess.Game, squareMap map[chess
 		}
 	}
 
-	return gb
+	moves := game.ValidMoves()
+	if selectedSquare == nil {
+		state.ValidMoves = moves
+	} else {
+		selectedSquare := chess.Square((7-selectedSquare.Rank)*8 + selectedSquare.File)
+		for _, move := range moves {
+			if move.S1() == selectedSquare {
+				state.ValidMoves = append(state.ValidMoves, move)
+			}
+		}
+
+		for _, move := range state.ValidMoves {
+			target := move.S2()
+			square := &state.Board[7-target/8][target%8]
+			square.Dot = true
+			square.Action = fmt.Sprintf("move?s1=%d&s2=%d", move.S1(), move.S2())
+		}
+	}
+
+	return &state, nil
 }
 
 func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
@@ -195,12 +191,12 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 	rank, _ := strconv.Atoi(chi.URLParam(r, "rank"))
 	file, _ := strconv.Atoi(chi.URLParam(r, "file"))
 
-	board, err := gameBoardFromMatch(match, &Square{Rank: rank, File: file})
+	state, err := gameStateFromMatch(match, &UISquare{Rank: rank, File: file})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	board.Render(w)
+	state.Render(w)
 }
 
 func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
@@ -212,13 +208,13 @@ func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	board, err := gameBoardFromMatch(match, nil)
+	state, err := gameStateFromMatch(match, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	board.Render(w)
+	state.Render(w)
 }
 
 func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +226,7 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	board, err := gameBoardFromMatch(match, nil)
+	state, err := gameStateFromMatch(match, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -239,11 +235,11 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 	s1, _ := strconv.Atoi(r.FormValue("s1"))
 	s2, _ := strconv.Atoi(r.FormValue("s2"))
 
-	fmt.Println("BEFORE:\n", board.Game.Position().Board().Draw())
+	fmt.Println("BEFORE:\n", state.Game.Position().Board().Draw())
 
-	for _, move := range board.Game.ValidMoves() {
+	for _, move := range state.Game.ValidMoves() {
 		if int(move.S1()) == s1 && int(move.S2()) == s2 {
-			err := board.Game.Move(move)
+			err := state.Game.Move(move)
 			if err != nil {
 				http.Error(w, "move error: "+err.Error(), http.StatusInternalServerError)
 				return
@@ -252,24 +248,24 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("AFTER:\n", board.Game.Position().Board().Draw())
+	fmt.Println("AFTER:\n", state.Game.Position().Board().Draw())
 
-	fmt.Println("STRING: ", board.Game.String())
+	fmt.Println("STRING: ", state.Game.String())
 
 	match, err = s.Queries.UpdateChessMatchPGN(ctx, api.UpdateChessMatchPGNParams{
 		ID:  match.ID,
-		Pgn: strings.TrimSpace(board.Game.String()),
+		Pgn: strings.TrimSpace(state.Game.String()),
 	})
 	if err != nil {
 		http.Error(w, "UpdateChessMatchPGN: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	board, err = gameBoardFromMatch(match, nil)
+	state, err = gameStateFromMatch(match, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	board.Render(w)
+	state.Render(w)
 }
