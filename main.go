@@ -28,6 +28,11 @@ func main() {
 	}
 	defer pool.Close()
 
+	err = migrateSchema(ctx, pool)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = worker.Start(context.Background(), api.New(pool), pool)
 	if err != nil {
 		log.Fatalf("could not start worker: %s", err)
