@@ -2,11 +2,13 @@ package chess
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"oj/api"
 	"oj/internal/link"
+	"oj/internal/middleware/auth"
 	"strconv"
 	"strings"
 
@@ -156,6 +158,8 @@ func gameStateFromMatch(match api.ChessMatch) (*GameState, error) {
 	return &state, nil
 }
 
+var ErrSquareNotOccupied = errors.New("no piece on square")
+
 func (s *GameState) selectSquare(rank, file int) error {
 	var selected *UISquare
 
@@ -167,16 +171,20 @@ func (s *GameState) selectSquare(rank, file int) error {
 					square.Selected = true
 					square.Action = "unselect"
 				}
-				goto done
 			}
 		}
 	}
-	return fmt.Errorf("could not select square")
-done:
+
+	if selected == nil {
+		return ErrSquareNotOccupied
+	}
 
 	// add the dots to the places the peice on the selected square can move to
 	moves := s.Game.ValidMoves()
+
 	selectedSquare := chess.Square((7-selected.Rank)*8 + selected.File)
+	fmt.Println("DEBUGX L6yq 1")
+
 	for _, move := range moves {
 		if move.S1() == selectedSquare {
 			s.ValidMoves = append(s.ValidMoves, move)
@@ -195,6 +203,7 @@ done:
 
 func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	currentUser := auth.FromContext(ctx)
 	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
 	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
 	if err != nil {
@@ -206,16 +215,40 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	currentUserColor, err := userMatchColor(currentUser, match)
+	if err != nil {
+		http.Error(w, "userMatchColor: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println(state.Game.Position().Turn(), currentUserColor)
+	if state.Game.Position().Turn() != currentUserColor {
+		state.Render(w)
+		return
+	}
+
 	rank, _ := strconv.Atoi(r.FormValue("rank"))
 	file, _ := strconv.Atoi(r.FormValue("file"))
 
 	err = state.selectSquare(rank, file)
 	if err != nil {
-		http.Error(w, "selectSquare: "+err.Error(), http.StatusInternalServerError)
-		return
+		if !errors.Is(err, ErrSquareNotOccupied) {
+			http.Error(w, "selectSquare: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	state.Render(w)
+}
+
+func userMatchColor(user api.User, match api.ChessMatch) (chess.Color, error) {
+	if user.ID == match.BlackUserID {
+		return chess.Black, nil
+	}
+	if user.ID == match.WhiteUserID {
+		return chess.White, nil
+	}
+	return chess.NoColor, fmt.Errorf("current user not part of match")
 }
 
 func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
@@ -238,6 +271,7 @@ func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
 
 func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	currentUser := auth.FromContext(ctx)
 	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
 	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
 	if err != nil {
@@ -248,6 +282,16 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 	state, err := gameStateFromMatch(match)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	currentUserColor, err := userMatchColor(currentUser, match)
+	if err != nil {
+		http.Error(w, "userMatchColor: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if state.Game.Position().Turn() != currentUserColor {
+		http.Error(w, "not your turn in this match", http.StatusBadRequest)
 		return
 	}
 
