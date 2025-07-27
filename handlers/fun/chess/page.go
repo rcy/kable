@@ -153,7 +153,7 @@ func gameStateFromMatch(match api.ChessMatch, selectedSquare *UISquare) (*GameSt
 			square.Action = "unselect"
 			square.Selected = true
 		} else {
-			square.Action = fmt.Sprintf("select/%d/%d", rank, file)
+			square.Action = fmt.Sprintf("select?rank=%d&file=%d", rank, file)
 		}
 	}
 
@@ -188,8 +188,8 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rank, _ := strconv.Atoi(chi.URLParam(r, "rank"))
-	file, _ := strconv.Atoi(chi.URLParam(r, "file"))
+	rank, _ := strconv.Atoi(r.FormValue("rank"))
+	file, _ := strconv.Atoi(r.FormValue("file"))
 
 	state, err := gameStateFromMatch(match, &UISquare{Rank: rank, File: file})
 	if err != nil {

@@ -95,7 +95,7 @@ func (rs Service) Routes() chi.Router {
 		r.Get("/", s.HandleLobby)
 		r.Route("/{matchID}", func(r chi.Router) {
 			r.Get("/", s.HandleMatch)
-			r.Post("/select/{rank}/{file}", s.HandleSelect)
+			r.Post("/select", s.HandleSelect)
 			r.Post("/unselect", s.HandleDeselect)
 			r.Post("/move", s.HandleMove)
 		})
