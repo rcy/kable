@@ -89,14 +89,17 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				g.Text(fmt.Sprintf("Chat with %s", text.Shorten(pageUser.Username, 8))),
 			)),
 			// chess
-			chessButton(pageUser, chessMatches),
+			chessButton(l.User, pageUser, chessMatches),
 
 			g.If(len(quizzes) > 0, me.QuizzesEl(0, quizzes)),
 		)).Render(w)
 }
 
-func chessButton(user api.User, matches []api.ChessMatch) g.Node {
+func chessButton(currentUser api.User, user api.User, matches []api.ChessMatch) g.Node {
 	if len(matches) == 0 {
+		if !currentUser.Admin {
+			return g.Group{}
+		}
 		return h.Button(
 			g.Attr("hx-post", link.User(user.ID, "chess-challenge")),
 			h.Class("nes-btn"), g.Text(fmt.Sprintf("Challenge %s to a game of chess", user.Username)))
