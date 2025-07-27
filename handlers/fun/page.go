@@ -60,5 +60,21 @@ func Page(w http.ResponseWriter, r *http.Request) {
 						),
 					),
 				),
+				h.A(
+					h.Href("/chess"),
+					h.Div(
+						h.Class("nes-container ghost"),
+						h.Style("display:flex; gap:1em"),
+						h.Img(
+							h.Height("100px"),
+							h.Width("100px"),
+							h.Style("background: rgba(100,100,100,1)"),
+							h.Src("/assets/chess/wK.svg"),
+						),
+						h.H1(
+							g.Text("Chess Club"),
+						),
+					),
+				),
 			))).Render(w)
 }

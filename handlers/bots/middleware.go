@@ -20,7 +20,7 @@ func (rs Resource) provideBot(next http.Handler) http.Handler {
 		botID, _ := strconv.Atoi(chi.URLParam(r, "botID"))
 		bot, err := rs.Model.Bot(ctx, int64(botID))
 		if errors.Is(err, pgx.ErrNoRows) {
-			render.NotFound(w)
+			render.NotFound(w, r)
 			return
 		}
 		if err != nil {

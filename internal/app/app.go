@@ -90,13 +90,20 @@ func (rs Service) Routes() chi.Router {
 
 	r.Mount("/stickers", stickers.Resource{Conn: rs.Conn}.Routes())
 
-	r.Get("/fun/chess", chess.Page)
-	r.Get("/fun/chess/select/{rank}/{file}", chess.Select)
-	r.Get("/fun/chess/unselect", chess.Unselect)
-	//r.Get("/fun/chess/select/{r1}/{f1}/{r2}/{f2}", chess.Move)
-
+	r.Route("/chess", func(r chi.Router) {
+		s := chess.NewService(rs.Queries, rs.Conn)
+		r.Get("/", s.HandleLobby)
+		r.Route("/{matchID}", func(r chi.Router) {
+			r.Get("/", s.HandleMatch)
+			r.Post("/select/{rank}/{file}", s.HandleSelect)
+			r.Post("/unselect", s.HandleDeselect)
+			r.Post("/move", s.HandleMove)
+		})
+	})
 	r.Route("/u/{userID}", func(r chi.Router) {
-		r.Route("/", u.NewService(rs.Queries).Router)
+		s := u.NewService(rs.Queries)
+		r.Get("/", s.Page)
+		r.Post("/chess-challenge", s.HandleChessChallenge)
 
 		r.Route("/quizzes", func(r chi.Router) {
 			r.Route("/create", create.NewService(rs.Queries).Router)

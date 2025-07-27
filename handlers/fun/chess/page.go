@@ -4,11 +4,11 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"log"
-	"math/rand"
 	"net/http"
-	"oj/handlers/layout"
+	"oj/api"
+	"oj/internal/link"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/notnil/chess"
@@ -17,6 +17,15 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
+type Board [8][8]Square
+
+type GameBoard struct {
+	Board      Board
+	Game       *chess.Game
+	ValidMoves []*chess.Move
+	MatchID    int64
+}
+
 type Square struct {
 	SVGPiece string
 	Selected bool
@@ -24,6 +33,7 @@ type Square struct {
 	Dot      bool
 	Rank     int
 	File     int
+	MatchID  int64
 }
 
 func (s Square) Occupied() bool {
@@ -45,7 +55,7 @@ func (s Square) Render(w io.Writer) error {
 
 	return h.Div(
 		h.Style(style),
-		g.Attr("hx-get", "/fun/chess/"+s.Action),
+		g.Attr("hx-post", link.ChessMatch(s.MatchID, s.Action)),
 		g.Attr("hx-target", "closest .board"),
 
 		// occupied square
@@ -70,13 +80,6 @@ func (s Square) Render(w io.Writer) error {
 	).Render(w)
 }
 
-type Board [8][8]Square
-
-type GameBoard struct {
-	Board      Board
-	ValidMoves []*chess.Move
-}
-
 func (gb GameBoard) Render(w io.Writer) error {
 	rows := make([][]g.Node, 0, 8)
 	for rank := 0; rank < 8; rank += 1 {
@@ -99,27 +102,7 @@ func (gb GameBoard) Render(w io.Writer) error {
 	).Render(w)
 }
 
-var game *chess.Game = chess.NewGame()
-
-func Page(w http.ResponseWriter, r *http.Request) {
-	l := layout.FromContext(r.Context())
-
-	for i := 0; i < 1; i += 1 {
-		moves := game.ValidMoves()
-		if len(moves) > 0 {
-			move := moves[rand.Intn(len(moves))]
-			game.Move(move)
-		}
-	}
-
-	log.Println(game.Position().Board().Draw())
-
-	gameBoard := gameBoard(game, nil)
-
-	layout.Layout(l, "chess club", chessPageEl(gameBoard)).Render(w)
-}
-
-func chessPageEl(gameboard GameBoard) g.Node {
+func chessPageEl(gameboard *GameBoard) g.Node {
 	return h.Div(
 		h.H1(g.Text("chess club")),
 		h.Div(h.ID("board-container"), h.Style("height: 80vh; width: 80vh;"),
@@ -127,15 +110,22 @@ func chessPageEl(gameboard GameBoard) g.Node {
 		))
 }
 
-func gameBoard(game *chess.Game, position *Position) GameBoard {
+func gameBoardFromMatch(match api.ChessMatch, selectedSquare *Square) (*GameBoard, error) {
+	reader := strings.NewReader(match.Pgn)
+	fn, err := chess.PGN(reader)
+	if err != nil {
+		return nil, err
+	}
+	game := chess.NewGame(fn)
+
 	pos := game.Position()
-	gb := gameBoardFromSquareMap(pos.Board().SquareMap(), position)
+	gb := gameBoardFromSquareMap(match.ID, game, pos.Board().SquareMap(), selectedSquare)
 
 	moves := game.ValidMoves()
-	if position == nil {
+	if selectedSquare == nil {
 		gb.ValidMoves = moves
 	} else {
-		selectedSquare := chess.Square((7-position.rank)*8 + position.file)
+		selectedSquare := chess.Square((7-selectedSquare.Rank)*8 + selectedSquare.File)
 		for _, move := range moves {
 			if move.S1() == selectedSquare {
 				gb.ValidMoves = append(gb.ValidMoves, move)
@@ -146,19 +136,13 @@ func gameBoard(game *chess.Game, position *Position) GameBoard {
 			target := move.S2()
 			square := &gb.Board[7-target/8][target%8]
 			square.Dot = true
-			square.Action = "move/" + move.String()
+			square.Action = fmt.Sprintf("move?s1=%d&s2=%d", move.S1(), move.S2())
 		}
 	}
 
-	return gb
+	return &gb, nil
 }
-
-type Position struct {
-	rank int
-	file int
-}
-
-func gameBoardFromSquareMap(squareMap map[chess.Square]chess.Piece, selected *Position) GameBoard {
+func gameBoardFromSquareMap(matchID int64, game *chess.Game, squareMap map[chess.Square]chess.Piece, selected *Square) GameBoard {
 	svgPiece := [13]string{
 		"", // empty piece
 		"/assets/chess/wK.svg",
@@ -175,7 +159,7 @@ func gameBoardFromSquareMap(squareMap map[chess.Square]chess.Piece, selected *Po
 		"/assets/chess/bP.svg",
 	}
 
-	var gb GameBoard
+	gb := GameBoard{Game: game}
 
 	for i := 0; i < 64; i += 1 {
 		piece := squareMap[chess.Square(i)]
@@ -186,8 +170,9 @@ func gameBoardFromSquareMap(squareMap map[chess.Square]chess.Piece, selected *Po
 
 		square.Rank = rank
 		square.File = file
+		square.MatchID = matchID
 
-		if selected != nil && selected.rank == rank && selected.file == file {
+		if selected != nil && selected.Rank == rank && selected.File == file {
 			square.Action = "unselect"
 			square.Selected = true
 		} else {
@@ -198,12 +183,93 @@ func gameBoardFromSquareMap(squareMap map[chess.Square]chess.Piece, selected *Po
 	return gb
 }
 
-func Select(w http.ResponseWriter, r *http.Request) {
+func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
+	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	rank, _ := strconv.Atoi(chi.URLParam(r, "rank"))
 	file, _ := strconv.Atoi(chi.URLParam(r, "file"))
-	gameBoard(game, &Position{rank, file}).Render(w)
+
+	board, err := gameBoardFromMatch(match, &Square{Rank: rank, File: file})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	board.Render(w)
 }
 
-func Unselect(w http.ResponseWriter, r *http.Request) {
-	gameBoard(game, nil).Render(w)
+func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
+	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	board, err := gameBoardFromMatch(match, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	board.Render(w)
+}
+
+func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
+	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	board, err := gameBoardFromMatch(match, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s1, _ := strconv.Atoi(r.FormValue("s1"))
+	s2, _ := strconv.Atoi(r.FormValue("s2"))
+
+	fmt.Println("BEFORE:\n", board.Game.Position().Board().Draw())
+
+	for _, move := range board.Game.ValidMoves() {
+		if int(move.S1()) == s1 && int(move.S2()) == s2 {
+			err := board.Game.Move(move)
+			if err != nil {
+				http.Error(w, "move error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			break
+		}
+	}
+
+	fmt.Println("AFTER:\n", board.Game.Position().Board().Draw())
+
+	fmt.Println("STRING: ", board.Game.String())
+
+	match, err = s.Queries.UpdateChessMatchPGN(ctx, api.UpdateChessMatchPGNParams{
+		ID:  match.ID,
+		Pgn: strings.TrimSpace(board.Game.String()),
+	})
+	if err != nil {
+		http.Error(w, "UpdateChessMatchPGN: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	board, err = gameBoardFromMatch(match, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	board.Render(w)
 }
