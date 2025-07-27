@@ -18,7 +18,7 @@ func (s *service) HandleMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	board, err := gameStateFromMatch(match, nil)
+	board, err := gameStateFromMatch(match)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
