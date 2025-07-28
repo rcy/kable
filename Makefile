@@ -17,14 +17,8 @@ sql:
 sql.prod:
 	psql service=prod
 
-version.%:
-	echo "update migration_version set version = $*" | sqlite3 ${SQLITE_DB}
-
 deploy:
 	flyctl deploy
-
-drop:
-	-rm ${SQLITE_DB}{,-shm,-wal}
 
 generate:
 	go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
