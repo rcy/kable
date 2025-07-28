@@ -6,7 +6,7 @@ require (
 	github.com/acaloiaro/neoq v0.19.0
 	github.com/alexandrevicenzi/go-sse v1.6.0
 	github.com/georgysavva/scany/v2 v2.1.4
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/jackc/tern/v2 v2.3.3
