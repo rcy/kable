@@ -7,6 +7,7 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/internal/link"
 	"oj/internal/middleware/auth"
 	"oj/worker"
 	"strconv"
@@ -91,7 +92,7 @@ func ConnectionEl(user api.User, roleIn string, roleOut string) g.Node {
 		linkText = user.Username
 		button = h.Button(
 			h.Class("nes-btn is-primary"),
-			g.Attr("hx-put", fmt.Sprintf("/connect/friend/%d", user.ID)),
+			g.Attr("hx-put", link.ConnectFriend(user.ID)),
 			g.Attr("hx-target", "closest .hx-connection"),
 			g.Attr("hx-swap", "outerHTML"),
 			h.Div(
@@ -108,7 +109,7 @@ func ConnectionEl(user api.User, roleIn string, roleOut string) g.Node {
 		linkText = fmt.Sprintf("%s is your %s", user.Username, roleOut)
 		button = h.Button(
 			h.Class("nes-btn"),
-			g.Attr("hx-delete", fmt.Sprintf("/connect/friend/%d", user.ID)),
+			g.Attr("hx-delete", link.ConnectFriend(user.ID)),
 			g.Attr("hx-confirm", fmt.Sprintf("Do you want to unfriend %s?", user.Username)),
 			g.Attr("hx-target", "closest .hx-connection"),
 			g.Attr("hx-swap", "outerHTML"),
@@ -123,7 +124,7 @@ func ConnectionEl(user api.User, roleIn string, roleOut string) g.Node {
 		linkText = fmt.Sprintf("%s sent you a friend request", user.Username)
 		button = h.Button(
 			h.Class("nes-btn is-success"),
-			g.Attr("hx-put", fmt.Sprintf("/connect/friend/%d", user.ID)),
+			g.Attr("hx-put", link.ConnectFriend(user.ID)),
 			g.Attr("hx-target", "closest .hx-connection"),
 			g.Attr("hx-swap", "outerHTML"),
 			h.Div(
@@ -140,7 +141,7 @@ func ConnectionEl(user api.User, roleIn string, roleOut string) g.Node {
 		linkText = fmt.Sprintf("you sent a friend request to %s", user.Username)
 		button = h.Button(
 			h.Class("nes-btn"),
-			g.Attr("hx-delete", fmt.Sprintf("/connect/friend/%d", user.ID)),
+			g.Attr("hx-delete", link.ConnectFriend(user.ID)),
 			g.Attr("hx-target", "closest .hx-connection"),
 			g.Attr("hx-swap", "outerHTML"),
 			h.Div(

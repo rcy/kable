@@ -16,3 +16,7 @@ func User(id int64, rest ...string) string {
 func ChessMatch(id int64, rest ...string) string {
 	return Link("chess", id, rest...)
 }
+
+func ConnectFriend(id int64) string {
+	return Link("connectkids/friend", id)
+}

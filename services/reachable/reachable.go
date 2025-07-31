@@ -2,7 +2,6 @@ package reachable
 
 import (
 	"context"
-	"log"
 	"oj/api"
 )
 
@@ -44,15 +43,14 @@ func ReachableKids(ctx context.Context, queries *api.Queries, kidID int64) ([]ap
 	delete(reachableKids, kidID)
 
 	var connections []api.GetConnectionRow
-	for kidID := range reachableKids {
+	for possibleFriendID := range reachableKids {
 		connection, err := queries.GetConnection(ctx, api.GetConnectionParams{
 			AID: kidID,
-			ID:  kidID,
+			ID:  possibleFriendID,
 		})
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("%v", connection)
 		connections = append(connections, connection)
 	}
 
