@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"oj/api"
+	"oj/handlers/connect"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
@@ -15,6 +16,8 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -29,29 +32,42 @@ func NewService(conn *pgxpool.Pool, queries *api.Queries) *service {
 	}
 }
 
-var (
-	//go:embed connectkids.gohtml
-	pageContent string
-	t           = layout.MustParse(pageContent)
-)
-
 func (s *service) KidConnect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(ctx)
 
-	connections, err := reachable.ReachableKids(ctx, s.Queries, l.User.ID)
+	kids, err := reachable.ReachableKids(ctx, s.Queries, l.User.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("ReachableKids: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	render.Execute(w, t, struct {
-		Layout      layout.Data
-		Connections []api.GetConnectionRow
-	}{
-		Layout:      l,
-		Connections: connections,
-	})
+	layout.Layout(l,
+		"Connect",
+		h.Div(
+			h.StyleEl(g.Raw(".htmx-request { opacity: .5; }")),
+			h.Div(
+				h.Style("display:flex;flex-direction:column; gap:1em"),
+				h.Div(
+					h.Class("nes-container ghost"),
+					h.H1(
+						g.Text("Connect with Other Kids"),
+					),
+					h.P(
+						g.Text("You can connect with other kids when your parents are also connected."),
+					),
+				),
+				h.Div(
+					h.Style("display:flex; flex-direction:column; gap:1em"),
+					g.Map(kids, func(c api.GetConnectionRow) g.Node {
+						if connect.ConnectionStatus(c.RoleIn, c.RoleOut) != "connection" {
+							return connect.ConnectionEl(c.User, c.RoleIn, c.RoleOut)
+						}
+						return h.Div()
+					}),
+				),
+			),
+		)).Render(w)
 }
 
 func (s *service) PutKidFriend(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +98,8 @@ func (s *service) PutKidFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.ExecuteNamed(w, t, "connection", connection)
+	w.Header().Add("HX-Trigger", "connectionChange")
+	connect.ConnectionEl(connection.User, connection.RoleIn, connection.RoleOut).Render(w)
 }
 
 func (s *service) DeleteKidFriend(w http.ResponseWriter, r *http.Request) {
@@ -111,5 +128,6 @@ func (s *service) DeleteKidFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.ExecuteNamed(w, t, "connection", connection)
+	w.Header().Add("HX-Trigger", "connectionChange")
+	connect.ConnectionEl(connection.User, connection.RoleIn, connection.RoleOut).Render(w)
 }
