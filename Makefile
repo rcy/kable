@@ -1,3 +1,5 @@
+SHELL=/bin/bash -o pipefail
+
 -include .env
 
 export PGSERVICE?=local
@@ -17,22 +19,19 @@ sql:
 sql.prod:
 	psql service=prod
 
-version.%:
-	echo "update migration_version set version = $*" | sqlite3 ${SQLITE_DB}
+drop:
+	cat etc/drop-database.sql | psql service=admin -v ON_ERROR_STOP=1
+
+create:
+	cat etc/docker-entrypoint-initdb.d/*.sql | psql service=admin -v ON_ERROR_STOP=1
+
+reset: drop create migrate
 
 deploy:
 	flyctl deploy
 
-drop:
-	-rm ${SQLITE_DB}{,-shm,-wal}
-
 generate:
 	go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
-
-getproddb:
-	fly ssh sftp get /data/oj_production.db
-	fly ssh sftp get /data/oj_production.db-shm
-	fly ssh sftp get /data/oj_production.db-wal
 
 test:
 	. ./.env.test && go test ./...
