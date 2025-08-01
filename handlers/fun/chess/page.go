@@ -108,14 +108,6 @@ func (s GameState) Render(w io.Writer) error {
 	).Render(w)
 }
 
-func chessPageNode(gameState *GameState) g.Node {
-	return h.Div(
-		h.H1(g.Text("chess club")),
-		h.Div(h.ID("board-container"), h.Style("height: 80vh; width: 80vh;"),
-			gameState,
-		))
-}
-
 func gameStateFromMatch(match api.ChessMatch) (*GameState, error) {
 	reader := strings.NewReader(match.Pgn)
 	fn, err := chess.PGN(reader)
