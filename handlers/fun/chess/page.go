@@ -30,6 +30,11 @@ type GameState struct {
 	MatchID    int64
 }
 
+type UIGameState struct {
+	gameState *GameState
+	flip      bool
+}
+
 type UISquare struct {
 	SVGPiece string
 	Selected bool
@@ -86,16 +91,26 @@ func (s UISquare) Render(w io.Writer) error {
 	).Render(w)
 }
 
-func (s GameState) Render(w io.Writer) error {
+func (s UIGameState) Render(w io.Writer) error {
 	rows := make([][]g.Node, 0, 8)
-	for rank := 0; rank < 8; rank += 1 {
-		row := make([]g.Node, 0, 8)
-		for file := 0; file < 8; file += 1 {
-			row = append(row, s.Board[rank][file])
-		}
-		rows = append(rows, row)
-	}
 
+	if s.flip {
+		for rank := 7; rank >= 0; rank -= 1 {
+			row := make([]g.Node, 0, 8)
+			for file := 0; file < 8; file += 1 {
+				row = append(row, s.gameState.Board[rank][file])
+			}
+			rows = append(rows, row)
+		}
+	} else {
+		for rank := 0; rank < 8; rank += 1 {
+			row := make([]g.Node, 0, 8)
+			for file := 0; file < 8; file += 1 {
+				row = append(row, s.gameState.Board[rank][file])
+			}
+			rows = append(rows, row)
+		}
+	}
 	return h.Div(
 		h.Class("board"),
 		h.Div(h.Style("height:100%; width:100%; display:flex; flex-direction:column"),
@@ -218,8 +233,11 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("turn=", state.Game.Position().Turn(), "user=", currentUserColor)
+
+	uiGameState := UIGameState{gameState: state, flip: match.BlackUserID == currentUser.ID}
+
 	if state.Game.Position().Turn() != currentUserColor {
-		state.Render(w)
+		uiGameState.Render(w)
 		return
 	}
 
@@ -234,7 +252,7 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	state.Render(w)
+	uiGameState.Render(w)
 }
 
 func userMatchColor(user api.User, match api.ChessMatch) (chess.Color, error) {
@@ -249,6 +267,7 @@ func userMatchColor(user api.User, match api.ChessMatch) (chess.Color, error) {
 
 func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	currentUser := auth.FromContext(ctx)
 	matchID, _ := strconv.Atoi(chi.URLParam(r, "matchID"))
 	match, err := s.Queries.ChessMatchByID(ctx, int64(matchID))
 	if err != nil {
@@ -262,7 +281,7 @@ func (s *service) HandleDeselect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state.Render(w)
+	UIGameState{gameState: state, flip: match.BlackUserID == currentUser.ID}.Render(w)
 }
 
 func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
@@ -339,5 +358,5 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state.Render(w)
+	UIGameState{gameState: state, flip: match.BlackUserID == currentUser.ID}.Render(w)
 }
