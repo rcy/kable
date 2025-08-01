@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"oj/api"
+	"oj/app"
+	"oj/handlers/chat"
 	"oj/internal/link"
 	"oj/internal/middleware/auth"
+	"oj/services/room"
 	"strconv"
 	"strings"
 
@@ -183,7 +187,6 @@ func (s *GameState) selectSquare(rank, file int) error {
 	moves := s.Game.ValidMoves()
 
 	selectedSquare := chess.Square((7-selected.Rank)*8 + selected.File)
-	fmt.Println("DEBUGX L6yq 1")
 
 	for _, move := range moves {
 		if move.S1() == selectedSquare {
@@ -210,6 +213,7 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	state, err := gameStateFromMatch(match)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -221,7 +225,7 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "userMatchColor: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(state.Game.Position().Turn(), currentUserColor)
+	fmt.Println("turn=", state.Game.Position().Turn(), "user=", currentUserColor)
 	if state.Game.Position().Turn() != currentUserColor {
 		state.Render(w)
 		return
@@ -295,10 +299,13 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// opponentUserID := match.WhiteUserID
+	// if currentUserColor == chess.Black {
+	// 	opponentUserID = match.BlackUserID
+	// }
+
 	s1, _ := strconv.Atoi(r.FormValue("s1"))
 	s2, _ := strconv.Atoi(r.FormValue("s2"))
-
-	fmt.Println("BEFORE:\n", state.Game.Position().Board().Draw())
 
 	for _, move := range state.Game.ValidMoves() {
 		if int(move.S1()) == s1 && int(move.S2()) == s2 {
@@ -311,9 +318,19 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("AFTER:\n", state.Game.Position().Board().Draw())
+	room, err := room.FindOrCreateByUserIDs(ctx, s.Conn, s.Queries, match.WhiteUserID, match.BlackUserID)
+	if err != nil {
+		http.Error(w, "FindOrCreateByUserIDs:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Println("STRING: ", state.Game.String())
+	link := app.AbsoluteURL(url.URL{Path: link.ChessMatch(match.ID)})
+	msg := fmt.Sprintf("I made a chess move in game %s", link.String())
+	err = chat.NewService(s.Queries, s.Conn).PostMessage(ctx, room.ID, currentUser.ID, msg)
+	if err != nil {
+		http.Error(w, "PostMessage: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	match, err = s.Queries.UpdateChessMatchPGN(ctx, api.UpdateChessMatchPGNParams{
 		ID:  match.ID,

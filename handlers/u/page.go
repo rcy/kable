@@ -97,9 +97,9 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 
 func chessButton(currentUser api.User, user api.User, matches []api.ChessMatch) g.Node {
 	if len(matches) == 0 {
-		if !currentUser.Admin {
-			return g.Group{}
-		}
+		// if !currentUser.Admin {
+		// 	return g.Group{}
+		// }
 		return h.Button(
 			g.Attr("hx-post", link.User(user.ID, "chess-challenge")),
 			h.Class("nes-btn"), g.Text(fmt.Sprintf("Challenge %s to a game of chess", user.Username)))
