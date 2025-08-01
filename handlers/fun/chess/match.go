@@ -29,10 +29,11 @@ func (s *service) HandleMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	layout.Layout(l, "chess club", chessPageNode(match, board)).Render(w)
+	uiGameState := UIGameState{gameState: board, flip: l.User.ID == match.BlackUserID}
+	layout.Layout(l, "chess club", chessPageNode(match, uiGameState)).Render(w)
 }
 
-func chessPageNode(match api.ChessMatch, gameState *GameState) g.Node {
+func chessPageNode(match api.ChessMatch, uiGameState UIGameState) g.Node {
 	elMatchID := fmt.Sprintf("match-%d", match.ID)
 	return h.Div(h.ID(elMatchID),
 		g.Attr("hx-get", link.ChessMatch(match.ID)),
@@ -42,6 +43,6 @@ func chessPageNode(match api.ChessMatch, gameState *GameState) g.Node {
 		g.Attr("hx-swap", "outerHTML"),
 		h.H1(g.Text("chess club")),
 		h.Div(h.ID("board-container"), h.Style("height: 80vh; width: 80vh;"),
-			gameState,
+			uiGameState,
 		))
 }
