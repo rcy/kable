@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"net/url"
+	"oj/app"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -19,6 +21,13 @@ func RenderString(text string) template.HTML {
 		if !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {
 			withProtocol = "https://" + link
 		}
+
+		rootLink := app.AbsoluteURL(url.URL{Path: ""})
+		if strings.HasPrefix(withProtocol, rootLink.String()) {
+			return fmt.Sprintf(`<a href="%s">%s</a>`, withProtocol, link)
+		}
+
+		// open in new tab
 		return fmt.Sprintf(`<a href="%s" target="_blank">%s</a>`, withProtocol, link)
 	})
 

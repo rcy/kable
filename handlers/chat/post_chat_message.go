@@ -28,7 +28,7 @@ func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("body")
 
 	if strings.TrimSpace(body) != "" {
-		err = rs.postMessage(ctx, int64(roomID), user.ID, body)
+		err = rs.PostMessage(ctx, int64(roomID), user.ID, body)
 		if err != nil {
 			render.Error(w, fmt.Errorf("postMessage: %w", err), 500)
 			return
@@ -46,7 +46,7 @@ type RoomUser struct {
 	Email     *string   `db:"email"`
 }
 
-func (rs Resource) postMessage(ctx context.Context, roomID, senderID int64, body string) error {
+func (rs Resource) PostMessage(ctx context.Context, roomID, senderID int64, body string) error {
 	var roomUsers []RoomUser
 
 	tx, err := rs.Conn.Begin(ctx)
