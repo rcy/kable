@@ -232,7 +232,6 @@ func (s *service) HandleSelect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "userMatchColor: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("turn=", state.Game.Position().Turn(), "user=", currentUserColor)
 
 	uiGameState := UIGameState{gameState: state, flip: match.BlackUserID == currentUser.ID}
 
