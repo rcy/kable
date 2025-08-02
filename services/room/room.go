@@ -11,7 +11,10 @@ import (
 )
 
 func FindOrCreateByUserIDs(ctx context.Context, conn *pgxpool.Pool, model *api.Queries, id1, id2 int64) (*api.Room, error) {
-	key := makeRoomKey(id1, id2)
+	key, err := makeRoomKey(id1, id2)
+	if err != nil {
+		return nil, fmt.Errorf("makeRoomKey: %w", err)
+	}
 
 	room, err := model.RoomByKey(ctx, key)
 	if err != nil {
@@ -56,9 +59,13 @@ func build(ctx context.Context, conn *pgxpool.Pool, model *api.Queries, key stri
 }
 
 // Generate a string to be used as a roomKey given 2 user IDs
-func makeRoomKey(id1, id2 int64) string {
+func makeRoomKey(id1, id2 int64) (string, error) {
+	if id1 == id2 {
+		return "", fmt.Errorf("id1 cannot equal id2")
+	}
+
 	min := int64(math.Min(float64(id1), float64(id2)))
 	max := int64(math.Max(float64(id1), float64(id2)))
 
-	return fmt.Sprintf("dm-%d-%d", min, max)
+	return fmt.Sprintf("dm-%d-%d", min, max), nil
 }
