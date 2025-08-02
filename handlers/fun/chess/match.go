@@ -63,7 +63,7 @@ func matchOpponent(ctx context.Context, qtx *api.Queries, match api.ChessMatch, 
 	}
 	opponent, err := qtx.UserByID(ctx, opponentID)
 	if err != nil {
-		return nil, fmt.Errorf("UserByID", err)
+		return nil, fmt.Errorf("UserByID: %w", err)
 	}
 	return &opponent, nil
 }
