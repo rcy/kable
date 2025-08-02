@@ -71,8 +71,6 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("chessMatches", chessMatches)
-
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(
@@ -89,7 +87,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 				g.Text(fmt.Sprintf("Chat with %s", text.Shorten(pageUser.Username, 8))),
 			)),
 			// chess
-			chessButton(l.User, pageUser, chessMatches),
+			g.If(connected, chessButton(l.User, pageUser, chessMatches)),
 
 			g.If(len(quizzes) > 0, me.QuizzesEl(0, quizzes)),
 		)).Render(w)
