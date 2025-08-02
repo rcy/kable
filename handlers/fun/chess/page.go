@@ -310,11 +310,6 @@ func (s *service) HandleMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// opponentUserID := match.WhiteUserID
-	// if currentUserColor == chess.Black {
-	// 	opponentUserID = match.BlackUserID
-	// }
-
 	s1, _ := strconv.Atoi(r.FormValue("s1"))
 	s2, _ := strconv.Atoi(r.FormValue("s2"))
 
