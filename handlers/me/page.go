@@ -54,6 +54,18 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	layout.Layout(l,
 		l.User.Username,
 		h.Div(h.Style("display:flex;flex-direction:column;gap:1em;"),
+			h.Div(h.Style("display:flex; gap: 1em; justify-content: flex-end"),
+				g.If(l.User.IsParent,
+					g.Group{
+						h.A(h.Href("/parent"), h.Class("nes-btn"), g.Text("Family")),
+						h.A(h.Href("/connect"), h.Class("nes-btn"), g.Text("Friends")),
+					},
+				),
+				g.If(!l.User.IsParent,
+					h.A(h.Href("/connectkids"), h.Class("nes-btn"), g.Text("Friends")),
+				),
+			),
+
 			h.Section(ProfileEl(l.User, true)),
 
 			h.Section(
