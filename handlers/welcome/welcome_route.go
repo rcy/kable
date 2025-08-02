@@ -13,6 +13,7 @@ import (
 	"oj/handlers/render"
 	"oj/services/email"
 	"oj/services/family"
+	"os"
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -95,6 +96,9 @@ func signout(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateDigitCode() string {
+	if os.Getenv("AUTH_CODE") != "" {
+		return os.Getenv("AUTH_CODE")
+	}
 	code := ""
 	for i := 0; i < 4; i++ {
 		digit := mathrand.Intn(10)
