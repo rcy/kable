@@ -73,9 +73,12 @@ func (rs Resource) PostMessage(ctx context.Context, roomID, senderID int64, body
 		return err
 	}
 
-	// create deliveries for each user in the room
+	// create deliveries for each user in the room other than the sender
 	var deliveryIDs []int64
 	for _, roomUser := range roomUsers {
+		if senderID == roomUser.UserID {
+			continue
+		}
 		var deliveryID int64
 		err = pgxscan.Get(ctx, tx, &deliveryID, `insert into deliveries(message_id, room_id, sender_id, recipient_id) values($1,$2,$3,$4) returning id`, messageID, roomID, senderID, roomUser.UserID)
 		if err != nil {
