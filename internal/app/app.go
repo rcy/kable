@@ -11,14 +11,11 @@ import (
 	"oj/handlers/connectkids"
 	"oj/handlers/deliveries"
 	"oj/handlers/eventsource"
-	"oj/handlers/family"
-	"oj/handlers/friends"
 	"oj/handlers/fun"
 	"oj/handlers/fun/chess"
 	"oj/handlers/fun/gradients"
 	"oj/handlers/fun/notebook"
 	"oj/handlers/header"
-	"oj/handlers/humans"
 	"oj/handlers/me"
 	"oj/handlers/me/editme"
 	"oj/handlers/postoffice"
@@ -71,18 +68,6 @@ func (rs Service) Routes() chi.Router {
 		r.Put("/avatar", s.PutAvatar)
 	})
 
-	r.Group(func(r chi.Router) {
-		s := humans.NewService(rs.Queries)
-		r.Get("/me/humans", s.Page)
-	})
-	r.Group(func(r chi.Router) {
-		s := family.NewService(rs.Queries)
-		r.Get("/me/family", s.Page)
-	})
-	r.Group(func(r chi.Router) {
-		s := friends.NewService(rs.Queries)
-		r.Get("/me/friends", s.Page)
-	})
 	r.Get("/fun", fun.Page)
 	r.Get("/fun/gradients", gradients.Index)
 	r.Post("/fun/gradients/picker", gradients.Picker)

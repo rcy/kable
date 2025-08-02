@@ -121,10 +121,6 @@ func header(unreadCount int, user api.User) g.Node {
 				h.Div(
 					h.Style("display:flex;gap:4px;align-items:center;justify-content:space-between"),
 					h.A(
-						h.Href("/me/humans"),
-						g.Text("Humans"),
-					),
-					h.A(
 						h.Href("/bots"),
 						g.Text("Robots"),
 					),
