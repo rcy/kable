@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -22,12 +24,6 @@ type service struct {
 func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
 	return &service{Queries: q, Conn: conn}
 }
-
-var (
-	//go:embed "page.gohtml"
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent)
-)
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -50,15 +46,34 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout          layout.Data
-		LogoutActionURL string
-		Delivery        api.Delivery
-	}{
-		Layout:          l,
-		LogoutActionURL: fmt.Sprintf("%d/logout", delivery.ID),
-		Delivery:        delivery,
-	})
+	logoutActionURL := fmt.Sprintf("%d/logout", delivery.ID)
+
+	layout.Layout(l, "Delivery",
+		h.Dialog(
+			g.Attr("open"),
+			h.Class("nes-dialog"),
+			h.Form(
+				h.Method("post"),
+				h.Action(logoutActionURL),
+				h.P(
+					g.Text(fmt.Sprintf("You are currently logged in as %s.", l.User.Username)),
+				),
+				h.P(
+					g.Text("This content is for a different user!"),
+				),
+				h.Div(
+					h.Style("display:flex; justify-content: space-between"),
+					h.Button(
+						h.Class("nes-btn is-primary"),
+						g.Text("Switch User"),
+					),
+					h.A(
+						h.Href("/"),
+						h.Class("nes-btn"),
+						g.Text("Cancel"),
+					),
+				),
+			))).Render(w)
 }
 
 // Logout and redirect back to delivery page to recheck current user
