@@ -12,9 +12,12 @@ import (
 	"oj/handlers/admin/quizzes"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/internal/link"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -37,12 +40,6 @@ func (s *service) Routes() chi.Router {
 	return r
 }
 
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent, pageContent)
-)
-
 func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -54,11 +51,25 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout layout.Data
-		Users  []api.User
-	}{
-		Layout: l,
-		Users:  allUsers,
-	})
+	layout.Layout(l, "admin", g.Group{
+		h.Div(h.Style("display:flex; gap:1em"),
+			h.A(
+				h.Href("/admin/quizzes"),
+				g.Text("quizzes"),
+			),
+			h.A(
+				h.Href("/admin/messages"),
+				g.Text("messages"),
+			),
+		),
+		h.Hr(),
+		g.Map(allUsers, func(user api.User) g.Node {
+			return h.Div(
+				h.A(
+					h.Href(link.User(user.ID)),
+					g.Text(user.Username),
+				),
+			)
+		}),
+	}).Render(w)
 }

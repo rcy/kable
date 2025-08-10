@@ -2,6 +2,7 @@ package link
 
 import (
 	"fmt"
+	"oj/api"
 	"strings"
 )
 
@@ -19,4 +20,12 @@ func ChessMatch(id int64, rest ...string) string {
 
 func ConnectFriend(id int64) string {
 	return Link("connectkids/friend", id)
+}
+
+func Quiz(quiz api.Quiz, rest ...string) string {
+	return fmt.Sprintf("/u/%d/quizzes/%d", quiz.UserID, quiz.ID)
+}
+
+func ParentKid(id int64, rest ...string) string {
+	return Link("parent/kids", id, rest...)
 }
