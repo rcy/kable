@@ -5,7 +5,7 @@ in
 with nixpkgs; mkShell {
   buildInputs = [
     air
-    go
+    go_1_24
     golint
     gopls
     sqlite
