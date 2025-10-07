@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: docker.io/bitnami/minio:2023
+        image: bitnamilegacy/minio:latest
         env:
           MINIO_ROOT_USER: username
           MINIO_ROOT_PASSWORD: password
