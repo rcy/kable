@@ -2,7 +2,7 @@ version: '3'
 
 services:
   minio:
-    image: docker.io/bitnami/minio:2023
+    image: bitnamilegacy/minio:latest
     ports:
       - '9010:9000'
       - '9011:9001'
