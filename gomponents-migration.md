@@ -30,7 +30,7 @@ For each: create a `page.go` alongside the `.gohtml`, translate HTML to Gomponen
 
 ---
 
-## Phase 2 — Medium complexity (welcome/onboarding + bots)
+## Phase 2 — Medium complexity (welcome/onboarding + bots) ✅ DONE
 
 Six welcome templates with conditional flows and form handling, plus bot chat list/edit/create.
 

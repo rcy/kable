@@ -1,7 +1,6 @@
 package notebook
 
 import (
-	_ "embed"
 	"fmt"
 	"net/http"
 	"oj/api"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -21,12 +22,6 @@ type service struct {
 func NewService(q *api.Queries) *service {
 	return &service{Queries: q}
 }
-
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent)
-)
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -38,13 +33,7 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout layout.Data
-		Notes  []api.Note
-	}{
-		Layout: l,
-		Notes:  allNotes,
-	})
+	layout.Layout(l, "Notebook", notebookPage(allNotes)).Render(w)
 }
 
 func (s *service) Post(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +46,51 @@ func (s *service) Post(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("CreateNote: %w", err), http.StatusInternalServerError)
 		return
 	}
-	render.ExecuteNamed(w, pageTemplate, "note", note)
+	noteEl(note).Render(w)
+}
+
+func notebookPage(notes []api.Note) g.Node {
+	return h.Div(h.Style("display:flex; flex-direction: column; gap: 1em"),
+		h.Div(h.Class("nes-container ghost"),
+			h.H1(g.Text("Notebook")),
+		),
+		h.Div(h.Style("display:flex; justify-content:flex-start"),
+			h.Button(h.Class("nes-btn is-success"),
+				g.Attr("hx-post", "/fun/notes"),
+				g.Attr("hx-swap", "afterbegin"),
+				g.Attr("hx-target", "#notes"),
+				g.Text("new note"),
+			),
+		),
+		h.Div(h.ID("notes"), h.Style("display:flex; flex-direction:column; gap:1em"),
+			g.Map(notes, func(note api.Note) g.Node { return noteEl(note) }),
+		),
+	)
+}
+
+func noteEl(note api.Note) g.Node {
+	return h.Div(h.Style("display:flex; gap:1em"), h.Class("note"),
+		h.Div(h.Style("flex:1"),
+			h.Textarea(
+				h.Class("nes-textarea"),
+				g.Attr("placeholder", "type your note here"),
+				g.Attr("rows", "5"),
+				g.Attr("hx-put", fmt.Sprintf("/fun/notes/%d", note.ID)),
+				g.Attr("hx-trigger", "keyup changed delay:500ms"),
+				h.Name("body"),
+				g.Text(note.Body),
+			),
+		),
+		h.Div(
+			h.Button(h.Class("nes-btn is-error"),
+				g.Attr("hx-delete", fmt.Sprintf("/fun/notes/%d", note.ID)),
+				g.Attr("hx-target", "closest .note"),
+				g.Attr("hx-swap", "outerHTML"),
+				g.Attr("hx-confirm", "really delete this note?"),
+				g.Text("-"),
+			),
+		),
+	)
 }
 
 func (s *service) PostFromChat(w http.ResponseWriter, r *http.Request) {
