@@ -37,10 +37,10 @@ test:
 	. ./.env.test && go test ./...
 
 migrate:
-	cd migrations && tern migrate && tern status
+	cd migrations && go tool tern migrate && go tool tern status
 
 migrate.%:
-	cd migrations && tern migrate -d $* && tern status
+	cd migrations && go tool tern migrate -d $* && go tool tern status
 
 compose-up:
 	docker compose up -d
