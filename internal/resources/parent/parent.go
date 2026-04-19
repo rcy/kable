@@ -1,7 +1,6 @@
 package parent
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"log"
@@ -11,10 +10,13 @@ import (
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 	"oj/services/family"
+	"oj/templatehelpers"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type Resource struct {
@@ -31,13 +33,6 @@ func (rs Resource) Routes() chi.Router {
 	return r
 }
 
-var (
-	//go:embed parent.gohtml
-	pageContent string
-
-	t = layout.MustParse(pageContent)
-)
-
 func (rs Resource) index(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
@@ -48,18 +43,53 @@ func (rs Resource) index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = t.Execute(w, struct {
-		Layout layout.Data
-		User   api.User
-		Kids   []api.User
-	}{
-		Layout: l,
-		User:   l.User,
-		Kids:   kids,
-	})
-	if err != nil {
-		render.Error(w, fmt.Errorf("Execute: %w", err), 500)
-	}
+	layout.Layout(l, "Parent", parentPage(l.User, kids)).Render(w)
+}
+
+func parentPage(user api.User, kids []api.User) g.Node {
+	return h.Div(h.Style("display:flex; flex-direction: column; gap:1em; margin-bottom: 50%"),
+		h.Div(h.Class("nes-container is-dark"), h.Style("display:flex; flex-direction:column; gap:1em"),
+			h.H1(g.Text("Hello parent! "), h.Small(g.Text(user.Email.String))),
+			h.P(g.Text("Here you can add managed accounts for your kids.")),
+			h.P(g.Text("You are the manager for these accounts. You can remove them and all associated data at any time.")),
+			h.P(g.Text("Choose a unique username for your child. It can contain their name, but doesn't have to. They will be able to change it to whatever they want when they login.")),
+			h.Div(h.Class("nes-container is-dark"),
+				h.Form(h.Action("/parent/kids"), h.Method("post"),
+					h.Label(
+						g.Text("Child's Username"),
+						h.Input(h.Class("nes-input"), h.Type("text"), h.Name("username")),
+					),
+					h.Button(h.Class("nes-btn is-primary"), g.Text("Add Kid")),
+				),
+			),
+			h.P(g.Text("Kids login with their username and a one time code that will be emailed to "+user.Email.String+".")),
+		),
+		g.Map(kids, func(kid api.User) g.Node { return kidEl(kid) }),
+	)
+}
+
+func kidEl(kid api.User) g.Node {
+	return h.Div(h.Class("nes-container ghost kid"),
+		h.Div(h.Style("display:flex; justify-content:space-between"),
+			h.A(h.Href(fmt.Sprintf("/u/%d", kid.ID)), h.Style("display: flex; gap:1em"),
+				h.Img(h.Width("100"), h.Src(kid.Avatar.URL())),
+				h.Div(h.Style("display:flex; flex-direction: column"),
+					h.H2(g.Text("username: "+kid.Username)),
+					h.Div(g.Text("Joined "+templatehelpers.FromNow(kid.CreatedAt.Time)+" ago")),
+				),
+			),
+			h.Div(
+				h.Button(
+					h.Class("nes-btn is-error"),
+					g.Attr("hx-delete", fmt.Sprintf("/parent/kids/%d", kid.ID)),
+					g.Attr("hx-confirm", fmt.Sprintf("Permanently delete %s and all associated data?", kid.Username)),
+					g.Attr("hx-target", "closest .kid"),
+					g.Attr("hx-swap", "outerHTML"),
+					g.Text("delete"),
+				),
+			),
+		),
+	)
 }
 
 func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +121,6 @@ func (rs Resource) createKid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.Error(w, fmt.Errorf("username taken"), http.StatusConflict)
-	return
 }
 
 func (rs Resource) deleteKid(w http.ResponseWriter, r *http.Request) {

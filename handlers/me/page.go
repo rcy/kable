@@ -1,7 +1,6 @@
 package me
 
 import (
-	_ "embed"
 	"fmt"
 	"net/http"
 	"oj/api"
@@ -23,11 +22,6 @@ type service struct {
 func NewService(q *api.Queries) *service {
 	return &service{Queries: q}
 }
-
-var (
-	//go:embed card.gohtml
-	CardContent string
-)
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

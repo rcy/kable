@@ -1,7 +1,6 @@
 package admin
 
 import (
-	_ "embed"
 	"fmt"
 	"net/http"
 	"oj/api"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -37,12 +38,6 @@ func (s *service) Routes() chi.Router {
 	return r
 }
 
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent, pageContent)
-)
-
 func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -54,11 +49,18 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Execute(w, pageTemplate, struct {
-		Layout layout.Data
-		Users  []api.User
-	}{
-		Layout: l,
-		Users:  allUsers,
-	})
+	layout.Layout(l, "Admin", adminPage(allUsers)).Render(w)
+}
+
+func adminPage(users []api.User) g.Node {
+	return h.Div(
+		h.A(h.Href("/admin/quizzes"), g.Text("quizzes")),
+		h.A(h.Href("/admin/messages"), g.Text("messages")),
+		h.Hr(),
+		g.Map(users, func(u api.User) g.Node {
+			return h.Div(
+				h.A(h.Href(fmt.Sprintf("/u/%d", u.ID)), g.Text(u.Username)),
+			)
+		}),
+	)
 }
