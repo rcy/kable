@@ -1,7 +1,6 @@
 package stickers
 
 import (
-	_ "embed"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,6 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goduckgo "github.com/minoplhy/duckduckgo-images-api"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type Resource struct {
@@ -29,12 +30,6 @@ func (rs Resource) Routes() chi.Router {
 
 	return r
 }
-
-var (
-	//go:embed page.gohtml
-	pageContent  string
-	pageTemplate = layout.MustParse(pageContent)
-)
 
 type Image struct {
 	ID        int64
@@ -55,31 +50,14 @@ func (rs Resource) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d := struct {
-		Layout layout.Data
-		Images []Image
-	}{
-		Layout: l,
-		Images: images,
-	}
-
-	render.Execute(w, pageTemplate, d)
+	layout.Layout(l, "Sticker Book", stickersPage(images)).Render(w)
 }
 
 func (rs Resource) search(w http.ResponseWriter, r *http.Request) {
 	query := r.FormValue("query")
-
 	keyword := url.QueryEscape("cartoon " + query)
-
 	result := goduckgo.Search(goduckgo.Query{Keyword: keyword})
-
-	render.ExecuteNamed(w, pageTemplate, "result", struct {
-		URL       string
-		Thumbnail string
-	}{
-		URL:       result.Results[0].Image,
-		Thumbnail: result.Results[0].Thumbnail,
-	})
+	resultEl(result.Results[0].Image).Render(w)
 }
 
 func (rs Resource) save(w http.ResponseWriter, r *http.Request) {
@@ -87,15 +65,58 @@ func (rs Resource) save(w http.ResponseWriter, r *http.Request) {
 
 	user := auth.FromContext(r.Context())
 
-	url := r.FormValue("url")
+	imgURL := r.FormValue("url")
 
-	img := Image{URL: url}
-
-	_, err := rs.Conn.Exec(ctx, `insert into images(url, user_id) values($1,$2)`, url, user.ID)
+	_, err := rs.Conn.Exec(ctx, `insert into images(url, user_id) values($1,$2)`, imgURL, user.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	render.ExecuteNamed(w, pageTemplate, "saveSticker", img)
+	saveStickerEl(Image{URL: imgURL}).Render(w)
+}
+
+func stickersPage(images []Image) g.Node {
+	return h.Div(
+		h.H1(g.Text("Sticker Book")),
+		h.P(g.Text("Type a word to search for stickers")),
+		h.Form(g.Attr("hx-post", ""), g.Attr("hx-target", "#result"), g.Attr("hx-swap", "outerHTML"),
+			h.Input(h.Type("text"), h.Name("query"), g.Attr("autofocus", ""), h.Style("width: 100%"), g.Attr("placeholder", "dog, cat, etc...")),
+		),
+		h.Div(h.Style("display:flex; flex-direction: column; gap:1em; align-items: center"),
+			h.Div(h.ID("result")),
+			h.Div(h.Class("nes-container is-dark"),
+				stickerBookEl(images),
+			),
+		),
+	)
+}
+
+func resultEl(imgURL string) g.Node {
+	return h.Div(h.ID("result"), h.Style("display:flex; flex-direction: column; gap:1em"), h.Class("nes-container is-dark"),
+		h.Div(h.Style("height: 400px"),
+			h.Img(h.Height("100%"), h.Src(imgURL)),
+		),
+		h.Form(g.Attr("hx-post", "stickers/save"), g.Attr("hx-target", "#stickerBook"), g.Attr("hx-swap", "afterbegin"),
+			h.Input(h.Type("hidden"), h.Name("url"), h.Value(imgURL)),
+			h.Button(h.ID("addbutton"), h.Class("nes-btn"), h.Style("width:100%"), g.Text("Add to sticker book")),
+		),
+	)
+}
+
+func stickerBookEl(images []Image) g.Node {
+	return h.Div(h.ID("stickerBook"), h.Style("display:flex; flex-wrap: wrap; gap:1em"),
+		g.Map(images, func(img Image) g.Node { return stickerEl(img) }),
+	)
+}
+
+func stickerEl(img Image) g.Node {
+	return h.Div(h.Img(h.Src(img.URL), h.Height("100px")))
+}
+
+func saveStickerEl(img Image) g.Node {
+	return g.Group{
+		h.Div(h.ID("addButton"), g.Attr("hx-swap-oob", "true")),
+		stickerEl(img),
+	}
 }

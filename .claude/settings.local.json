@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(find /home/rcy/personal/kable -type f \\\\\\( -name \"*.gohtml\" -o -name \"*.html\" \\\\\\) -exec ls -lh {} \\\\;)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(go build *)",
+      "Bash(go test *)"
+    ]
+  }
+}
