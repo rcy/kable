@@ -14,6 +14,7 @@ with nixpkgs; mkShell {
     entr
     google-cloud-sdk
     nodejs
+    postgresql_17
   ];
 
   DOCKER_CLI_HINTS="false";
