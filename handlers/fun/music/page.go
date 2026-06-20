@@ -262,7 +262,7 @@ func (s *service) musicPage(userID int64) g.Node {
 			g.Attr("hx-post", "/fun/music/download"),
 			g.Attr("hx-target", "#downloads"),
 			g.Attr("hx-swap", "innerHTML"),
-			g.Attr("hx-on::after-request", "this.reset()"),
+			g.Attr("hx-on::config-request", "this.reset()"),
 			h.Div(
 				h.Style("display:flex; gap:0.5rem"),
 				h.Input(
@@ -349,7 +349,7 @@ func (s *service) downloadsList(userID int64) g.Node {
 
 func downloadingRow(id, url string) g.Node {
 	return h.Div(
-		h.Class("nes-container"),
+		h.Class("nes-container ghost"),
 		h.Style("margin-bottom:0.5rem"),
 		g.Attr("hx-get", "/fun/music/status?id="+id),
 		g.Attr("hx-trigger", "every 2s"),
@@ -381,7 +381,7 @@ func trackRow(t api.MusicTrack) g.Node {
 			uploader = "—"
 		}
 		return h.Div(
-			h.Class("nes-container"),
+			h.Class("nes-container ghost"),
 			h.Style("margin-bottom:0.5rem"),
 			h.Div(
 				h.Style("display:flex; align-items:center; gap:0.75rem"),
