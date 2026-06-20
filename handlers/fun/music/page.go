@@ -205,7 +205,8 @@ func (s *service) runDownload(id, url string, userID int64) {
 		AudioFormat("mp3").
 		Output(dlPath() + "/" + id + ".%(ext)s").
 		NoProgress().
-		PrintJSON()
+		PrintJSON().
+		Cookies(os.Getenv("YTDLP_COOKIES_FILE"))
 
 	result, err := dl.Run(context.Background(), url)
 
