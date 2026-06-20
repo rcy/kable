@@ -2,34 +2,12 @@ package layout
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
-	"html/template"
 	"oj/api"
 	"oj/gradient"
-	"oj/templatehelpers"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
-
-var (
-	//go:embed "layout.gohtml"
-	layoutContent string
-)
-
-func MustParse(templateContent ...string) *template.Template {
-	tpl := template.New("layout").Funcs(templatehelpers.FuncMap)
-
-	for i, content := range append([]string{layoutContent}, templateContent...) {
-		var err error
-		tpl, err = tpl.Parse(content)
-		if err != nil {
-			fmt.Println(i, content)
-			panic(err)
-		}
-	}
-	return tpl
-}
 
 type Data struct {
 	User               api.User

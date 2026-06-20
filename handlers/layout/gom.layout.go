@@ -64,7 +64,7 @@ func Layout(data Data, title string, main g.Node) g.Node {
 			h.StyleEl(g.Raw(style(string(data.BackgroundGradient.Render())))),
 			h.Div(
 				h.Style("height: 100%;display:flex; flex-direction:column"),
-				header(data.UnreadCount, data.User),
+				HeaderEl(data.UnreadCount, data.User),
 				h.Div(
 					h.Style("flex:auto; height:100%; overflow: auto;"),
 					h.Main(
@@ -108,7 +108,7 @@ header a:hover {
 `, background)
 }
 
-func header(unreadCount int, user api.User) g.Node {
+func HeaderEl(unreadCount int, user api.User) g.Node {
 	return h.Header(
 		g.Attr("hx-get", "/header"),
 		g.Attr("hx-trigger", "USER_UPDATE from:body"),

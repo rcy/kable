@@ -46,7 +46,7 @@ Migrate `welcome/layout.gohtml` to a Gomponents wrapper function first, then mig
 
 ---
 
-## Phase 3 — High complexity (chat + gradients)
+## Phase 3 — High complexity (chat + gradients) ✅ DONE
 
 Nested templates, SSE wiring, and significant inline CSS/JS.
 
