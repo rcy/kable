@@ -12,6 +12,7 @@ import (
 	"oj/api"
 	"oj/handlers"
 	"oj/handlers/eventsource"
+	"oj/handlers/fun/music"
 	"oj/services/email"
 	"oj/worker"
 
@@ -21,6 +22,11 @@ import (
 
 func main() {
 	ctx := context.Background()
+
+	err := music.InitYtdlp()
+	if err != nil {
+		log.Fatalf("failed to initialize ytdlp: %s", err)
+	}
 
 	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
