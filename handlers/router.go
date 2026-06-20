@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"oj/api"
 	"oj/handlers/admin"
-	"oj/handlers/fun/music"
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/handlers/welcome"
@@ -41,8 +40,6 @@ func Router(conn *pgxpool.Pool) *chi.Mux {
 	})
 
 	// non authenticated routes
-	r.Post("/ytdlp", music.NewService(queries).Install)
-
 	r.Group(func(r chi.Router) {
 		s := welcome.NewService(queries, conn)
 		r.Route("/welcome", s.Route)
