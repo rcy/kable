@@ -27,6 +27,9 @@ COPY --from=builder /app/build/server .
 
 COPY assets assets
 
+# add dependencies for yt-dlp
+RUN apk add python3 deno ffmpeg
+
 # Expose the desired port
 EXPOSE 8080
 

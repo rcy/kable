@@ -15,6 +15,7 @@ with nixpkgs; mkShell {
     google-cloud-sdk
     nodejs
     postgresql
+    deno
   ];
 
   DOCKER_CLI_HINTS="false";

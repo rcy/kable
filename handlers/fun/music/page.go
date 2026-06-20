@@ -14,7 +14,6 @@ import (
 
 	"oj/api"
 	"oj/handlers/layout"
-	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 
 	g "maragu.dev/gomponents"
@@ -30,16 +29,6 @@ var (
 	initOnce        sync.Once
 )
 
-func InitYtdlp() error {
-	log.Println("installing yt-dlp and dependencies...")
-	_, err := ytdlp.InstallAll(context.Background())
-	if err != nil {
-		return err
-	}
-	log.Println("yt-dlp ready")
-	return nil
-}
-
 type service struct {
 	Queries *api.Queries
 }
@@ -54,15 +43,6 @@ func dlPath() string {
 		return "./music-downloads"
 	}
 	return p
-}
-
-func (s *service) Install(w http.ResponseWriter, r *http.Request) {
-	err := InitYtdlp()
-	if err != nil {
-		render.Error(w, err, http.StatusInternalServerError)
-		return
-	}
-	w.Write([]byte("ok"))
 }
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +90,16 @@ func (s *service) Download(w http.ResponseWriter, r *http.Request) {
 	activeDownloads[id] = url
 	activeMu.Unlock()
 
-	go s.runDownload(id, url, user.ID)
+	err = s.runDownload(id, url, user.ID)
+	if err != nil {
+		_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
+			UserID:      user.ID,
+			OldFilename: id + ".mp3",
+			NewFilename: id + ".mp3",
+			Status:      "error",
+			Error:       toPgText(err.Error()),
+		})
+	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = s.downloadsList(user.ID).Render(w)
@@ -205,34 +194,37 @@ func slugify(title, uploader string) string {
 	return slug
 }
 
-func (s *service) runDownload(id, url string, userID int64) {
+func (s *service) runDownload(id, url string, userID int64) error {
+	fmt.Println("DEBUGX dzDG 0")
+
+	ctx := context.TODO()
+
+	cmd := os.Getenv("YTDLP_EXECUTABLE")
+	if cmd == "" {
+		return fmt.Errorf("YTDLP_EXECUTABLE not set")
+	}
+
+	fmt.Println("DEBUGX QtjQ 1")
+
 	dl := ytdlp.New().
+		SetExecutable(cmd).
 		FormatSort("res,ext:mp4:m4a").
 		ExtractAudio().
 		AudioFormat("mp3").
 		Output(dlPath() + "/" + id + ".%(ext)s").
 		NoProgress().
-		PrintJSON().
-		Cookies(os.Getenv("YTDLP_COOKIES_FILE"))
+		PrintJSON()
 
-	result, err := dl.Run(context.Background(), url)
-
-	activeMu.Lock()
-	delete(activeDownloads, id)
-	activeMu.Unlock()
-
-	ctx := context.Background()
-
-	if err != nil {
-		_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
-			UserID:      userID,
-			OldFilename: id + ".mp3",
-			NewFilename: id + ".mp3",
-			Status:      "error",
-			Error:       toPgText(err.Error()),
-		})
-		return
+	cookiesFile := os.Getenv("YTDLP_COOKIES_FILE")
+	if cookiesFile != "" {
+		dl.Cookies(cookiesFile)
 	}
+
+	result, err := dl.Run(ctx, url)
+	if err != nil {
+		return err
+	}
+	fmt.Println("DEBUGX XrvK 2")
 
 	title := ""
 	uploader := ""
@@ -255,6 +247,9 @@ func (s *service) runDownload(id, url string, userID int64) {
 		Uploader:    toPgText(uploader),
 		Status:      "done",
 	})
+
+	fmt.Println("DEBUGX dza7 4")
+	return nil
 }
 
 func (s *service) musicPage(userID int64) g.Node {
