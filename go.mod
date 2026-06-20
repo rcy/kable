@@ -18,15 +18,18 @@ require (
 	github.com/minoplhy/duckduckgo-images-api v1.1.1
 	github.com/notnil/chess v1.9.0
 	github.com/rcy/durfmt v0.0.0-20240102082646-83cc8efdab91
+	github.com/riverqueue/river v0.39.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.39.0
 	github.com/sashabaranov/go-openai v1.40.3
 	github.com/yuin/goldmark v1.4.13
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	maragu.dev/gomponents v1.1.0
 	mvdan.cc/xurls/v2 v2.5.0
+	riverqueue.com/riverui v0.16.0
 )
 
 require (
-	cel.dev/expr v0.19.1 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -81,9 +84,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/apiframe v0.0.0-20251229202423-2b52ce1c482e // indirect
-	github.com/riverqueue/river v0.39.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.39.0 // indirect
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.39.0 // indirect
 	github.com/riverqueue/river/rivershared v0.39.0 // indirect
 	github.com/riverqueue/river/rivertype v0.39.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
@@ -115,10 +116,10 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
-	google.golang.org/grpc v1.71.1 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -126,7 +127,6 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.9.1 // indirect
 	modernc.org/sqlite v1.37.0 // indirect
-	riverqueue.com/riverui v0.16.0 // indirect
 )
 
 tool (
