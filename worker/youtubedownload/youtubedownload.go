@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"oj/api"
 
@@ -28,6 +29,10 @@ func NewWorker(q *api.Queries) *Worker {
 	return &Worker{Queries: q}
 }
 
+func (w *Worker) Timeout(job *river.Job[YoutubeDownloadArgs]) time.Duration {
+	return 5 * time.Minute
+}
+
 func dlPath() string {
 	p := os.Getenv("MUSIC_DOWNLOAD_PATH")
 	if p == "" {
@@ -37,6 +42,9 @@ func dlPath() string {
 }
 
 func (w *Worker) Work(ctx context.Context, job *river.Job[YoutubeDownloadArgs]) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
 	trackID := job.Args.MusicTrackID
 
 	track, err := w.Queries.MusicTrackByID(ctx, trackID)
