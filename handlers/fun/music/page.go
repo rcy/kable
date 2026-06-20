@@ -29,15 +29,14 @@ var (
 	initOnce        sync.Once
 )
 
-func initYtdlp() {
-	initOnce.Do(func() {
-		log.Println("installing yt-dlp and dependencies...")
-		_, err := ytdlp.InstallAll(context.Background())
-		if err != nil {
-			log.Printf("yt-dlp install warning: %v", err)
-		}
-		log.Println("yt-dlp ready")
-	})
+func InitYtdlp() error {
+	log.Println("installing yt-dlp and dependencies...")
+	_, err := ytdlp.InstallAll(context.Background())
+	if err != nil {
+		return err
+	}
+	log.Println("yt-dlp ready")
+	return nil
 }
 
 type service struct {
@@ -57,7 +56,6 @@ func dlPath() string {
 }
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
-	initYtdlp()
 	os.MkdirAll(dlPath(), 0755)
 
 	ctx := r.Context()
@@ -73,7 +71,6 @@ func (s *service) Page(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *service) Download(w http.ResponseWriter, r *http.Request) {
-	initYtdlp()
 	os.MkdirAll(dlPath(), 0755)
 
 	ctx := r.Context()
