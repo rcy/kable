@@ -99,6 +99,18 @@ type Message struct {
 	Body      string
 }
 
+type MusicTrack struct {
+	ID        int64
+	CreatedAt pgtype.Timestamptz
+	UserID    int64
+	Url       string
+	Title     pgtype.Text
+	Uploader  pgtype.Text
+	Filename  string
+	Status    string
+	Error     pgtype.Text
+}
+
 type Note struct {
 	ID        int64
 	CreatedAt pgtype.Timestamptz

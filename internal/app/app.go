@@ -70,10 +70,13 @@ func (rs Service) Routes() chi.Router {
 	})
 
 	r.Get("/fun", fun.Page)
-	r.Get("/fun/music", music.Page)
-	r.Post("/fun/music/download", music.Download)
-	r.Get("/fun/music/status", music.Status)
-	r.Get("/fun/music/file", music.File)
+	r.Group(func(r chi.Router) {
+		s := music.NewService(rs.Queries)
+		r.Get("/fun/music", s.Page)
+		r.Post("/fun/music/download", s.Download)
+		r.Get("/fun/music/status", s.Status)
+		r.Get("/fun/music/file", s.File)
+	})
 
 	r.Get("/fun/gradients", gradients.Index)
 	r.Post("/fun/gradients/picker", gradients.Picker)

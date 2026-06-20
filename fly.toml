@@ -12,6 +12,7 @@ processes = []
 [env]
   PORT = "8080"
   ROOT_URL = "https://kable.ca"
+  MUSIC_DOWNLOAD_PATH = "/data/music"
 
 [experimental]
   auto_rollback = true
