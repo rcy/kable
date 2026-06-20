@@ -195,16 +195,12 @@ func slugify(title, uploader string) string {
 }
 
 func (s *service) runDownload(id, url string, userID int64) error {
-	fmt.Println("DEBUGX dzDG 0")
-
 	ctx := context.TODO()
 
 	cmd := os.Getenv("YTDLP_EXECUTABLE")
 	if cmd == "" {
 		return fmt.Errorf("YTDLP_EXECUTABLE not set")
 	}
-
-	fmt.Println("DEBUGX QtjQ 1")
 
 	dl := ytdlp.New().
 		SetExecutable(cmd).
@@ -224,7 +220,6 @@ func (s *service) runDownload(id, url string, userID int64) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("DEBUGX XrvK 2")
 
 	title := ""
 	uploader := ""
@@ -248,7 +243,6 @@ func (s *service) runDownload(id, url string, userID int64) error {
 		Status:      "done",
 	})
 
-	fmt.Println("DEBUGX dza7 4")
 	return nil
 }
 
