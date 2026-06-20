@@ -11,9 +11,11 @@ import (
 
 	"oj/api"
 	"oj/handlers"
+	"oj/handlers/admin"
 	"oj/handlers/eventsource"
 	"oj/services/email"
 	"oj/worker"
+	"oj/worker/helloworld"
 
 	"github.com/alexandrevicenzi/go-sse"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,6 +40,11 @@ func main() {
 		log.Fatalf("could not start worker: %s", err)
 	}
 
+	_, err = worker.RiverClient.Insert(ctx, helloworld.HelloWorldArgs{}, nil)
+	if err != nil {
+		log.Fatalf("could not insert hello world job: %s", err)
+	}
+
 	go func() {
 		count := 0
 		for {
@@ -59,7 +66,13 @@ func main() {
 		port = "8080"
 	}
 
-	handler := handlers.Router(pool)
+	handler := handlers.Router(pool, worker.RiverClient)
+
+	if admin.RiverUIHandler != nil {
+		if err := admin.RiverUIHandler.Start(ctx); err != nil {
+			log.Fatalf("could not start river ui: %s", err)
+		}
+	}
 
 	log.Printf("listening on port %s", port)
 	err = http.ListenAndServe(":"+port, handler)

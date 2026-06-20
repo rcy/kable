@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"oj/api"
+	"oj/worker/helloworld"
 	"oj/worker/notifydelivery"
 	"oj/worker/notifyfriend"
 	"oj/worker/notifykidfriend"
@@ -13,10 +14,14 @@ import (
 	"github.com/acaloiaro/neoq/handler"
 	"github.com/acaloiaro/neoq/jobs"
 	"github.com/acaloiaro/neoq/types"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
 var Queue types.Backend
+var RiverClient *river.Client[pgx.Tx]
 
 func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error {
 	var err error
@@ -28,6 +33,23 @@ func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error 
 	Queue.Start(ctx, "notify-delivery", handler.New(notifydelivery.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries, conn).Handle))
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &helloworld.Worker{})
+
+	RiverClient, err = river.NewClient(riverpgxv5.New(conn), &river.Config{
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {MaxWorkers: 1},
+		},
+		Workers: workers,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := RiverClient.Start(ctx); err != nil {
+		return err
+	}
 
 	log.Print("started worker")
 

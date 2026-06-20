@@ -10,7 +10,7 @@ import (
 func TestRouter(t *testing.T) {
 	t.Skip("db related test")
 
-	routes := NewService(nil, nil).Routes()
+	routes := NewService(nil, nil, nil).Routes()
 
 	for _, tc := range []struct {
 		name           string
