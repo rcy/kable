@@ -8,6 +8,7 @@ import (
 	"oj/worker/notifydelivery"
 	"oj/worker/notifyfriend"
 	"oj/worker/notifykidfriend"
+	"oj/worker/youtubedownload"
 	"time"
 
 	"github.com/acaloiaro/neoq"
@@ -36,6 +37,7 @@ func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error 
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &helloworld.Worker{})
+	river.AddWorker(workers, youtubedownload.NewWorker(queries))
 
 	RiverClient, err = river.NewClient(riverpgxv5.New(conn), &river.Config{
 		Queues: map[string]river.QueueConfig{

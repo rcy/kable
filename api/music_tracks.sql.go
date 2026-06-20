@@ -52,6 +52,27 @@ func (q *Queries) InsertMusicTrack(ctx context.Context, arg InsertMusicTrackPara
 	return i, err
 }
 
+const musicTrackByID = `-- name: MusicTrackByID :one
+select id, created_at, user_id, url, title, uploader, filename, status, error from music_tracks where id = $1
+`
+
+func (q *Queries) MusicTrackByID(ctx context.Context, id int64) (MusicTrack, error) {
+	row := q.db.QueryRow(ctx, musicTrackByID, id)
+	var i MusicTrack
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.Url,
+		&i.Title,
+		&i.Uploader,
+		&i.Filename,
+		&i.Status,
+		&i.Error,
+	)
+	return i, err
+}
+
 const updateMusicTrack = `-- name: UpdateMusicTrack :exec
 update music_tracks set title = $1, uploader = $2, filename = $3, status = $4, error = $5
 where user_id = $6 and filename = $7
@@ -76,6 +97,30 @@ func (q *Queries) UpdateMusicTrack(ctx context.Context, arg UpdateMusicTrackPara
 		arg.Error,
 		arg.UserID,
 		arg.OldFilename,
+	)
+	return err
+}
+
+const updateMusicTrackByID = `-- name: UpdateMusicTrackByID :exec
+update music_tracks set title = $1, uploader = $2, status = $3, error = $4
+where id = $5
+`
+
+type UpdateMusicTrackByIDParams struct {
+	Title    pgtype.Text
+	Uploader pgtype.Text
+	Status   string
+	Error    pgtype.Text
+	ID       int64
+}
+
+func (q *Queries) UpdateMusicTrackByID(ctx context.Context, arg UpdateMusicTrackByIDParams) error {
+	_, err := q.db.Exec(ctx, updateMusicTrackByID,
+		arg.Title,
+		arg.Uploader,
+		arg.Status,
+		arg.Error,
+		arg.ID,
 	)
 	return err
 }

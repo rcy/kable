@@ -15,18 +15,17 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/internal/middleware/auth"
+	"oj/worker"
+	"oj/worker/youtubedownload"
 
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/lrstanley/go-ytdlp"
 )
 
 var (
-	activeDownloads = map[string]string{}
-	activeMu        sync.Mutex
-	initOnce        sync.Once
+	initOnce sync.Once
 )
 
 type service struct {
@@ -75,7 +74,7 @@ func (s *service) Download(w http.ResponseWriter, r *http.Request) {
 
 	id := fmt.Sprintf("%d", time.Now().UnixNano())
 
-	_, err := s.Queries.InsertMusicTrack(ctx, api.InsertMusicTrackParams{
+	track, err := s.Queries.InsertMusicTrack(ctx, api.InsertMusicTrackParams{
 		UserID:   user.ID,
 		Url:      url,
 		Filename: id + ".mp3",
@@ -86,19 +85,15 @@ func (s *service) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	activeMu.Lock()
-	activeDownloads[id] = url
-	activeMu.Unlock()
-
-	err = s.runDownload(id, url, user.ID)
+	_, err = worker.RiverClient.Insert(ctx, youtubedownload.YoutubeDownloadArgs{MusicTrackID: track.ID}, nil)
 	if err != nil {
-		_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
-			UserID:      user.ID,
-			OldFilename: id + ".mp3",
-			NewFilename: id + ".mp3",
-			Status:      "error",
-			Error:       toPgText(err.Error()),
+		_ = s.Queries.UpdateMusicTrackByID(ctx, api.UpdateMusicTrackByIDParams{
+			ID:     track.ID,
+			Status: "error",
+			Error:  toPgText(err.Error()),
 		})
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -109,16 +104,6 @@ func (s *service) Status(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
-		return
-	}
-
-	activeMu.Lock()
-	_, active := activeDownloads[id]
-	activeMu.Unlock()
-
-	if active {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_ = downloadingRow(id, activeDownloads[id]).Render(w)
 		return
 	}
 
@@ -194,58 +179,6 @@ func slugify(title, uploader string) string {
 	return slug
 }
 
-func (s *service) runDownload(id, url string, userID int64) error {
-	ctx := context.TODO()
-
-	cmd := os.Getenv("YTDLP_EXECUTABLE")
-	if cmd == "" {
-		return fmt.Errorf("YTDLP_EXECUTABLE not set")
-	}
-
-	dl := ytdlp.New().
-		SetExecutable(cmd).
-		FormatSort("res,ext:mp4:m4a").
-		ExtractAudio().
-		AudioFormat("mp3").
-		Output(dlPath() + "/" + id + ".%(ext)s").
-		NoProgress().
-		PrintJSON()
-
-	cookiesFile := os.Getenv("YTDLP_COOKIES_FILE")
-	if cookiesFile != "" {
-		dl.Cookies(cookiesFile)
-	}
-
-	result, err := dl.Run(ctx, url)
-	if err != nil {
-		return err
-	}
-
-	title := ""
-	uploader := ""
-	if info, e := result.GetExtractedInfo(); e == nil && len(info) > 0 {
-		if info[0].Title != nil {
-			title = *info[0].Title
-		}
-		if info[0].Uploader != nil {
-			uploader = *info[0].Uploader
-		} else if info[0].Channel != nil {
-			uploader = *info[0].Channel
-		}
-	}
-
-	_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
-		UserID:      userID,
-		OldFilename: id + ".mp3",
-		NewFilename: id + ".mp3",
-		Title:       toPgText(title),
-		Uploader:    toPgText(uploader),
-		Status:      "done",
-	})
-
-	return nil
-}
-
 func (s *service) musicPage(userID int64) g.Node {
 	return g.Group{
 		h.H1(
@@ -311,38 +244,15 @@ function playTrack(id,btn){
 func (s *service) downloadsList(userID int64) g.Node {
 	tracks, err := s.Queries.UserMusicTracks(context.Background(), userID)
 	if err != nil || len(tracks) == 0 {
-		activeMu.Lock()
-		hasActive := len(activeDownloads) > 0
-		activeMu.Unlock()
-
-		if !hasActive {
-			return h.P(
-				h.Class("nes-text is-disabled"),
-				g.Text("Nothing downloaded yet."),
-			)
-		}
-
-		var nodes []g.Node
-		activeMu.Lock()
-		for id, url := range activeDownloads {
-			nodes = append(nodes, downloadingRow(id, url))
-		}
-		activeMu.Unlock()
-		return g.Group(nodes)
+		return h.P(
+			h.Class("nes-text is-disabled"),
+			g.Text("Nothing downloaded yet."),
+		)
 	}
 
 	var nodes []g.Node
 	for _, t := range tracks {
-		id := t.Filename[:len(t.Filename)-len(".mp3")]
-		activeMu.Lock()
-		_, active := activeDownloads[id]
-		activeMu.Unlock()
-
-		if active && t.Status == "downloading" {
-			nodes = append(nodes, downloadingRow(id, t.Url))
-		} else {
-			nodes = append(nodes, trackRow(t))
-		}
+		nodes = append(nodes, trackRow(t))
 	}
 	return g.Group(nodes)
 }
