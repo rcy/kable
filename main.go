@@ -11,6 +11,7 @@ import (
 
 	"oj/api"
 	"oj/handlers"
+	"oj/handlers/admin"
 	"oj/handlers/eventsource"
 	"oj/services/email"
 	"oj/worker"
@@ -59,7 +60,13 @@ func main() {
 		port = "8080"
 	}
 
-	handler := handlers.Router(pool)
+	handler := handlers.Router(pool, worker.RiverClient)
+
+	if admin.RiverUIHandler != nil {
+		if err := admin.RiverUIHandler.Start(ctx); err != nil {
+			log.Fatalf("could not start river ui: %s", err)
+		}
+	}
 
 	log.Printf("listening on port %s", port)
 	err = http.ListenAndServe(":"+port, handler)

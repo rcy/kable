@@ -16,10 +16,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 )
 
-func Router(conn *pgxpool.Pool) *chi.Mux {
+func Router(conn *pgxpool.Pool, riverClient *river.Client[pgx.Tx]) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -36,7 +38,7 @@ func Router(conn *pgxpool.Pool) *chi.Mux {
 		//r.Use(redirect.Redirect)
 		r.Use(layout.NewService(queries, conn).Provider)
 		r.Mount("/", app.Service{Conn: conn, Queries: queries}.Routes())
-		r.Mount("/admin", admin.NewService(queries, conn).Routes())
+		r.Mount("/admin", admin.NewService(queries, conn, riverClient).Routes())
 	})
 
 	// non authenticated routes
