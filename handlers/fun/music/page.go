@@ -49,7 +49,7 @@ func NewService(q *api.Queries) *service {
 func dlPath() string {
 	p := os.Getenv("MUSIC_DOWNLOAD_PATH")
 	if p == "" {
-		return "downloads"
+		return "./music-downloads"
 	}
 	return p
 }
