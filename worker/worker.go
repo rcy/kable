@@ -13,10 +13,14 @@ import (
 	"github.com/acaloiaro/neoq/handler"
 	"github.com/acaloiaro/neoq/jobs"
 	"github.com/acaloiaro/neoq/types"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
 var Queue types.Backend
+var RiverClient *river.Client[pgx.Tx]
 
 func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error {
 	var err error
@@ -28,6 +32,11 @@ func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error 
 	Queue.Start(ctx, "notify-delivery", handler.New(notifydelivery.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries, conn).Handle))
+
+	RiverClient, err = river.NewClient(riverpgxv5.New(conn), &river.Config{})
+	if err != nil {
+		return err
+	}
 
 	log.Print("started worker")
 
