@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"oj/api"
+	"oj/worker/helloworld"
 	"oj/worker/notifydelivery"
 	"oj/worker/notifyfriend"
 	"oj/worker/notifykidfriend"
@@ -33,8 +34,20 @@ func Start(ctx context.Context, queries *api.Queries, conn *pgxpool.Pool) error 
 	Queue.Start(ctx, "notify-friend", handler.New(notifyfriend.NewService(queries, conn).Handle))
 	Queue.Start(ctx, "notify-kid-friend", handler.New(notifykidfriend.NewService(queries, conn).Handle))
 
-	RiverClient, err = river.NewClient(riverpgxv5.New(conn), &river.Config{})
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &helloworld.Worker{})
+
+	RiverClient, err = river.NewClient(riverpgxv5.New(conn), &river.Config{
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {MaxWorkers: 1},
+		},
+		Workers: workers,
+	})
 	if err != nil {
+		return err
+	}
+
+	if err := RiverClient.Start(ctx); err != nil {
 		return err
 	}
 
