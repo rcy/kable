@@ -5,7 +5,7 @@ in
 with nixpkgs; mkShell {
   buildInputs = [
     air
-    go_1_24
+    go
     golint
     gopls
     sqlite
@@ -14,7 +14,7 @@ with nixpkgs; mkShell {
     entr
     google-cloud-sdk
     nodejs
-    postgresql_17
+    postgresql
   ];
 
   DOCKER_CLI_HINTS="false";

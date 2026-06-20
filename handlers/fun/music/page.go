@@ -14,6 +14,7 @@ import (
 
 	"oj/api"
 	"oj/handlers/layout"
+	"oj/handlers/render"
 	"oj/internal/middleware/auth"
 
 	g "maragu.dev/gomponents"
@@ -53,6 +54,15 @@ func dlPath() string {
 		return "./music-downloads"
 	}
 	return p
+}
+
+func (s *service) Install(w http.ResponseWriter, r *http.Request) {
+	err := InitYtdlp()
+	if err != nil {
+		render.Error(w, err, http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte("ok"))
 }
 
 func (s *service) Page(w http.ResponseWriter, r *http.Request) {
