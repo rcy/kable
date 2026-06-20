@@ -46,6 +46,19 @@ func Page(w http.ResponseWriter, r *http.Request) {
 					),
 				),
 				h.A(
+					h.Href("fun/music"),
+					h.Div(
+						h.Class("nes-container ghost"),
+						h.Style("display:flex; gap:1em"),
+						h.I(
+							h.Class("nes-icon trophy is-large"),
+						),
+						h.H1(
+							g.Text("Music Ripper"),
+						),
+					),
+				),
+				h.A(
 					h.Href("fun/notes"),
 					h.Div(
 						h.Class("nes-container ghost"),

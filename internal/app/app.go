@@ -14,6 +14,7 @@ import (
 	"oj/handlers/fun"
 	"oj/handlers/fun/chess"
 	"oj/handlers/fun/gradients"
+	"oj/handlers/fun/music"
 	"oj/handlers/fun/notebook"
 	"oj/handlers/header"
 	"oj/handlers/me"
@@ -69,6 +70,14 @@ func (rs Service) Routes() chi.Router {
 	})
 
 	r.Get("/fun", fun.Page)
+	r.Group(func(r chi.Router) {
+		s := music.NewService(rs.Queries)
+		r.Get("/fun/music", s.Page)
+		r.Post("/fun/music/download", s.Download)
+		r.Get("/fun/music/status", s.Status)
+		r.Get("/fun/music/file", s.File)
+	})
+
 	r.Get("/fun/gradients", gradients.Index)
 	r.Post("/fun/gradients/picker", gradients.Picker)
 	r.Post("/fun/gradients/set-background", gradients.NewService(rs.Queries, rs.Conn).SetBackground)
