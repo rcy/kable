@@ -15,6 +15,7 @@ import (
 	"oj/handlers/eventsource"
 	"oj/services/email"
 	"oj/worker"
+	"oj/worker/helloworld"
 
 	"github.com/alexandrevicenzi/go-sse"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,6 +38,11 @@ func main() {
 	err = worker.Start(context.Background(), api.New(pool), pool)
 	if err != nil {
 		log.Fatalf("could not start worker: %s", err)
+	}
+
+	_, err = worker.RiverClient.Insert(ctx, helloworld.HelloWorldArgs{}, nil)
+	if err != nil {
+		log.Fatalf("could not insert hello world job: %s", err)
 	}
 
 	go func() {
