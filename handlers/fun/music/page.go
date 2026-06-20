@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -155,8 +157,45 @@ func (s *service) File(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filepath.Base(name)))
+	user := auth.FromContext(r.Context())
+	tracks, err := s.Queries.UserMusicTracks(r.Context(), user.ID)
+	dlName := filepath.Base(name)
+	if err == nil {
+		for _, t := range tracks {
+			if t.Filename == name {
+				slug := slugify(t.Title.String, t.Uploader.String)
+				if slug != "" {
+					dlName = slug + ".mp3"
+				}
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, dlName))
 	http.ServeFile(w, r, path)
+}
+
+var nonSlugRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugify(title, uploader string) string {
+	parts := []string{}
+	if uploader != "" {
+		parts = append(parts, strings.ToLower(uploader))
+	}
+	if title != "" {
+		parts = append(parts, strings.ToLower(title))
+	}
+	if len(parts) == 0 {
+		return "track"
+	}
+	slug := strings.Join(parts, "-")
+	slug = nonSlugRe.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+	if len(slug) > 120 {
+		slug = slug[:120]
+	}
+	return slug
 }
 
 func (s *service) runDownload(id, url string, userID int64) {
@@ -178,10 +217,11 @@ func (s *service) runDownload(id, url string, userID int64) {
 
 	if err != nil {
 		_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
-			UserID:   userID,
-			Filename: id + ".mp3",
-			Status:   "error",
-			Error:    toPgText(err.Error()),
+			UserID:      userID,
+			OldFilename: id + ".mp3",
+			NewFilename: id + ".mp3",
+			Status:      "error",
+			Error:       toPgText(err.Error()),
 		})
 		return
 	}
@@ -200,11 +240,12 @@ func (s *service) runDownload(id, url string, userID int64) {
 	}
 
 	_ = s.Queries.UpdateMusicTrack(ctx, api.UpdateMusicTrackParams{
-		UserID:   userID,
-		Filename: id + ".mp3",
-		Title:    toPgText(title),
-		Uploader: toPgText(uploader),
-		Status:   "done",
+		UserID:      userID,
+		OldFilename: id + ".mp3",
+		NewFilename: id + ".mp3",
+		Title:       toPgText(title),
+		Uploader:    toPgText(uploader),
+		Status:      "done",
 	})
 }
 

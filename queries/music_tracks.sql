@@ -7,5 +7,5 @@ values(@user_id, @url, @title, @uploader, @filename, @status, @error)
 returning *;
 
 -- name: UpdateMusicTrack :exec
-update music_tracks set title = @title, uploader = @uploader, status = @status, error = @error
-where user_id = @user_id and filename = @filename;
+update music_tracks set title = @title, uploader = @uploader, filename = @new_filename, status = @status, error = @error
+where user_id = @user_id and filename = @old_filename;

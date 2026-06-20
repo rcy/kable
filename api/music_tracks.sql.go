@@ -53,27 +53,29 @@ func (q *Queries) InsertMusicTrack(ctx context.Context, arg InsertMusicTrackPara
 }
 
 const updateMusicTrack = `-- name: UpdateMusicTrack :exec
-update music_tracks set title = $1, uploader = $2, status = $3, error = $4
-where user_id = $5 and filename = $6
+update music_tracks set title = $1, uploader = $2, filename = $3, status = $4, error = $5
+where user_id = $6 and filename = $7
 `
 
 type UpdateMusicTrackParams struct {
-	Title    pgtype.Text
-	Uploader pgtype.Text
-	Status   string
-	Error    pgtype.Text
-	UserID   int64
-	Filename string
+	Title       pgtype.Text
+	Uploader    pgtype.Text
+	NewFilename string
+	Status      string
+	Error       pgtype.Text
+	UserID      int64
+	OldFilename string
 }
 
 func (q *Queries) UpdateMusicTrack(ctx context.Context, arg UpdateMusicTrackParams) error {
 	_, err := q.db.Exec(ctx, updateMusicTrack,
 		arg.Title,
 		arg.Uploader,
+		arg.NewFilename,
 		arg.Status,
 		arg.Error,
 		arg.UserID,
-		arg.Filename,
+		arg.OldFilename,
 	)
 	return err
 }
