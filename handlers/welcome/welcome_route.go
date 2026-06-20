@@ -2,10 +2,8 @@ package welcome
 
 import (
 	cryptorand "crypto/rand"
-	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"html/template"
 	"log"
 	mathrand "math/rand"
 	"net/http"
@@ -20,6 +18,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -47,47 +47,181 @@ func (s *service) Route(r chi.Router) {
 	r.Get("/signout", signout)
 }
 
-//go:embed layout.gohtml
-var layoutContent string
-
-func mustLayout(content string) *template.Template {
-	return template.Must(template.New("").Parse(layoutContent + content))
+func welcomeLayout(main g.Node) g.Node {
+	return h.HTML(
+		h.Head(
+			h.Script(h.Src("https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"), g.Attr("defer", "")),
+			h.Link(h.Href("https://unpkg.com/nes.css@latest/css/nes.min.css"), h.Rel("stylesheet")),
+			h.Link(h.Href("https://fonts.googleapis.com/css?family=Press+Start+2P"), h.Rel("stylesheet")),
+			h.Meta(h.Charset("utf-8")),
+			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
+			h.StyleEl(g.Raw(`html, body, pre, code, kbd, samp { font-family: 'Press Start 2P'; }`)),
+		),
+		h.Body(g.Attr("x-data", ""),
+			h.Div(h.Style("display:flex; flex-direction: column; gap:2em"),
+				h.Header(h.Style("background: rgba(0,0,0,.9); color:white;"),
+					h.Div(h.Style("max-width: 960px; margin: 0 auto;"),
+						h.Div(h.Style("padding: 1em 0 1em"),
+							h.Div(h.Style("display:flex;gap:4px;align-items:center;justify-content:space-between"),
+								h.A(h.Href("/"), h.Style("display:flex; align-items: center; gap:6px; color: inherit; text-decoration: none"),
+									h.I(h.Class("nes-icon coin")),
+									h.H3(h.Style("margin:0"), g.Text("Kable")),
+								),
+							),
+						),
+					),
+				),
+				h.Main(h.Style("flex:auto; height:100%; overflow: auto;"),
+					h.Div(h.Style("max-width: 960px; margin: 0 auto;"),
+						h.H1(g.Text("Welcome to Kable!")),
+						h.P(g.Text("Kable is a place for kids to play and socialize with friends and family.")),
+						main,
+					),
+				),
+			),
+		),
+	)
 }
-
-//go:embed welcome.gohtml
-var welcomeContent string
-var welcomeTemplate = mustLayout(welcomeContent)
 
 func welcome(w http.ResponseWriter, r *http.Request) {
-	err := welcomeTemplate.Execute(w, nil)
-	if err != nil {
-		render.Error(w, fmt.Errorf("welcomeTemplate.Execute: %w", err), 500)
-		return
-	}
+	welcomeLayout(welcomeMain()).Render(w)
 }
 
-//go:embed welcome_kids.gohtml
-var welcomeKidsContent string
-var welcomeKidsTemplate = mustLayout(welcomeKidsContent)
-
-func welcomeKids(w http.ResponseWriter, r *http.Request) {
-	err := welcomeKidsTemplate.Execute(w, struct{ Error string }{""})
-	if err != nil {
-		render.Error(w, fmt.Errorf("welcomeKidsTemplate.Execute: %w", err), 500)
-		return
-	}
+func welcomeMain() g.Node {
+	return h.Div(h.Style("display:flex; flex-direction:column; gap:3em"),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Kids Zone")),
+			h.I(h.Class("nes-ash")),
+			h.P(g.Text("Use this button if you have an account")),
+			h.A(h.Class("nes-btn is-success"), h.Href("/welcome/kids"), g.Text("I am a Kid!")),
+		),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Parents")),
+			h.P(g.Text("A parent account is required to use Kable.")),
+			h.P(g.Text("The first step is to create an account using your email address.")),
+			h.P(g.Text("Once logged in you will be able to create managed accounts for your children.")),
+			h.A(h.Class("nes-btn is-primary"), h.Href("/welcome/parents"), g.Text("Sign In")),
+		),
+	)
 }
-
-//go:embed welcome_parents.gohtml
-var welcomeParentsContent string
-var welcomeParentsTemplate = mustLayout(welcomeParentsContent)
 
 func welcomeParents(w http.ResponseWriter, r *http.Request) {
-	err := welcomeParentsTemplate.Execute(w, nil)
-	if err != nil {
-		render.Error(w, fmt.Errorf("welcomeKidsTemplate.Execute: %w", err), 500)
-		return
-	}
+	welcomeLayout(welcomeParentsMain()).Render(w)
+}
+
+func welcomeParentsMain() g.Node {
+	return h.Div(h.Style("display:flex; flex-direction:column;gap:2em"),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Parent Sign In "), h.Small(g.Text("Step 1: Email"))),
+			h.P(g.Text("New and returning parents sign in here.")),
+			h.Form(h.Method("post"), h.Action("/welcome/parents/email"),
+				h.Label(
+					g.Text("Email"),
+					h.Input(g.Attr("placeholder", "human@example.com"), h.Class("nes-input"), h.Name("email"), h.Type("email"), g.Attr("required", "")),
+				),
+				h.Button(h.Class("nes-btn is-primary"), h.Type("submit"), g.Text("Submit")),
+			),
+		),
+		h.Div(h.Class("box kid"),
+			g.Text("If you are looking for the kids login, "),
+			h.A(h.Class("nes-text is-success"), h.Href("/welcome/kids"), g.Text("click here!")),
+		),
+	)
+}
+
+func parentsCode(w http.ResponseWriter, r *http.Request) {
+	welcomeLayout(welcomeParentsCodeMain("")).Render(w)
+}
+
+func welcomeParentsCodeMain(errMsg string) g.Node {
+	return h.Div(h.Style("display:flex; flex-direction:column;gap:2em"),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Parent Sign In "), h.Small(g.Text("Step 2: Code"))),
+			h.P(g.Text("A verification code was sent to your email.")),
+			h.Form(h.Method("post"), h.Action("/welcome/parents/code"),
+				h.Div(
+					h.Label(
+						g.Text("4 Digit Code"),
+						h.Input(h.Class("nes-input"),
+							g.Attr("placeholder", "Enter code..."),
+							h.Name("code"),
+							h.Type("text"),
+							g.Attr("required", ""),
+							g.Attr("x-on:keydown", "$refs.error.setHTML('')"),
+						),
+						h.Div(h.Class("nes-text is-error"), g.Attr("x-ref", "error"), g.Text(errMsg)),
+					),
+				),
+				h.Button(h.Class("nes-btn is-primary"), h.Type("submit"), g.Text("Submit")),
+			),
+			h.P(g.Text("Didn't get a code?  "), h.A(h.Href("/welcome"), g.Text("Start over"))),
+		),
+	)
+}
+
+func welcomeKids(w http.ResponseWriter, r *http.Request) {
+	welcomeLayout(welcomeKidsMain("")).Render(w)
+}
+
+func welcomeKidsMain(errMsg string) g.Node {
+	return h.Div(h.ID("welcomeKidsSection"), h.Style("display:flex; flex-direction:column;gap:2em"),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Kids Login - Step 1: Username")),
+			h.I(h.Class("nes-pokeball")),
+			h.Form(h.Method("post"), h.Action("/welcome/kids/username"),
+				h.Div(
+					h.Label(
+						g.Text("Username"),
+						h.Input(h.Class("nes-input"),
+							g.Attr("placeholder", "Type your username..."),
+							h.Name("username"),
+							h.Type("text"),
+							g.Attr("required", ""),
+							g.Attr("x-on:keydown", "$refs.error.setHTML('')"),
+						),
+						h.Div(h.Class("nes-text is-error"), g.Attr("x-ref", "error"), g.Text(errMsg)),
+					),
+				),
+				h.Button(h.Class("nes-btn is-success"), h.Type("submit"), g.Text("Submit")),
+			),
+		),
+		h.Div(h.Class("nes-container is-dark"),
+			h.Strong(h.Class("block titlebar"), g.Text("What if I am new?")),
+			h.P(h.Style("margin-top:1em"),
+				g.Text("If this is your first time here and you do not have a username, you will need to have a "),
+				h.A(h.Href("/welcome/parents"), g.Text("parent register")),
+				g.Text(" and create an account for you."),
+			),
+		),
+	)
+}
+
+func kidsCode(w http.ResponseWriter, r *http.Request) {
+	welcomeLayout(welcomeKidsCodeMain("")).Render(w)
+}
+
+func welcomeKidsCodeMain(errMsg string) g.Node {
+	return h.Div(h.Class("nes-container"),
+		h.H2(g.Text("Kids Login - Step 2: Code")),
+		h.I(h.Class("nes-squirtle")),
+		h.P(g.Text("Please enter the four numbers sent to your parent's email")),
+		h.Form(h.Method("post"), h.Action("/welcome/kids/code"),
+			h.Div(
+				h.Label(
+					g.Text("4 Digit Code"),
+					h.Input(h.Class("nes-input"),
+						g.Attr("placeholder", "Type code..."),
+						h.Name("code"),
+						h.Type("text"),
+						g.Attr("required", ""),
+						g.Attr("x-on:keydown", "$refs.error.setHTML('')"),
+					),
+					h.Div(h.Class("nes-text is-error"), g.Attr("x-ref", "error"), g.Text(errMsg)),
+				),
+			),
+			h.Button(h.Class("nes-btn is-success"), h.Type("submit"), g.Text("Submit")),
+		),
+	)
 }
 
 func signout(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +250,6 @@ func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// store generated code in pending registrations table along with email
 	nonce, err := generateSecureString(32)
 	if err != nil {
 		render.Error(w, fmt.Errorf("generateSecureString: %w", err), 500)
@@ -131,7 +264,6 @@ func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{Name: "kh_nonce", Value: nonce, Path: "/", Expires: time.Now().Add(time.Hour)})
 
-	// email code to user
 	err = email.Send(
 		fmt.Sprintf("Parent sign in code: %s", code),
 		fmt.Sprintf("Your Kable verification code is %s", code),
@@ -141,20 +273,7 @@ func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// redirect to page to input code
 	http.Redirect(w, r, "/welcome/parents/code", http.StatusSeeOther)
-}
-
-//go:embed welcome_parents_code.gohtml
-var welcomeParentsCodeContent string
-var welcomeParentsCodeTemplate = mustLayout(welcomeParentsCodeContent)
-
-func parentsCode(w http.ResponseWriter, r *http.Request) {
-	err := welcomeParentsCodeTemplate.Execute(w, struct{ Error string }{""})
-	if err != nil {
-		render.Error(w, fmt.Errorf("welcomeParentsCodeTemplate.Execute: %w", err), 500)
-		return
-	}
 }
 
 func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
@@ -165,17 +284,13 @@ func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 	user, err := s.Queries.UserByUsername(r.Context(), username)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			err = welcomeKidsTemplate.Execute(w, struct{ Error string }{"User not found"})
-			if err != nil {
-				render.Error(w, fmt.Errorf("welcomeKidsTemplate.Execute: %w", err), http.StatusInternalServerError)
-			}
+			welcomeLayout(welcomeKidsMain("User not found")).Render(w)
 			return
 		}
 		render.Error(w, fmt.Errorf("UserByUsername: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	// store generated code in pending registrations table along with email
 	nonce, err := generateSecureString(32)
 	if err != nil {
 		render.Error(w, fmt.Errorf("generateSecureString: %w", err), 500)
@@ -190,7 +305,6 @@ func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{Name: "kh_nonce", Value: nonce, Path: "/", Expires: time.Now().Add(time.Hour)})
 
-	// email code to kids parent(s)
 	parents, err := s.Queries.ParentsByKidID(ctx, user.ID)
 	if err != nil {
 		render.Error(w, fmt.Errorf("ParentsByKidID: %w", err), 500)
@@ -213,19 +327,7 @@ func (s *service) kidsUsernameAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// redirect to page to input code
 	http.Redirect(w, r, "/welcome/kids/code", http.StatusSeeOther)
-}
-
-//go:embed welcome_kids_code.gohtml
-var welcomeKidsCodeContent string
-var welcomeKidsCodeTemplate = mustLayout(welcomeKidsCodeContent)
-
-func kidsCode(w http.ResponseWriter, r *http.Request) {
-	err := welcomeKidsCodeTemplate.Execute(w, struct{ Error string }{""})
-	if err != nil {
-		render.Error(w, fmt.Errorf("welcomKidsCodeTemplate.Execute: %w", err), 500)
-	}
 }
 
 func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
@@ -245,8 +347,6 @@ func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 	nonce := cookie.Value
 	code := r.FormValue("code")
 
-	// look up code
-	// XXX fetch by id alone, compare code, and add retry count
 	err = pgxscan.Get(ctx, s.Conn, &userID, "select user_id from kids_codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
 		if err != pgx.ErrNoRows {
@@ -257,15 +357,12 @@ func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 
 	if userID != 0 {
 		log.Println("code is good")
-		// found email, code is good
-		// create user if not exists
 		user, err := s.Queries.UserByID(ctx, userID)
 		if err != nil {
 			render.Error(w, fmt.Errorf("UserByID: %w", err), 500)
 			return
 		}
 		log.Printf("user %v", user)
-		// create a new session
 		key, err := generateSecureString(32)
 		if err != nil {
 			render.Error(w, fmt.Errorf("generateSecureString: %w", err), 500)
@@ -276,28 +373,19 @@ func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 			render.Error(w, fmt.Errorf("error creating session: %w", err), 500)
 			return
 		}
-		// set session cookie
 		http.SetCookie(w, &http.Cookie{Name: "kh_session", Value: key, Path: "/", Expires: time.Now().Add(365 * 24 * time.Hour)})
-		// clear nonce cookie
 		http.SetCookie(w, &http.Cookie{Name: "kh_nonce", Path: "/", Expires: time.Now().Add(-time.Hour)})
-
-		// redirect
 		http.Redirect(w, r, "/", 303)
 	} else {
 		log.Println("code is bad")
-		// code is bad
-		err = welcomeKidsCodeTemplate.Execute(w, struct{ Error string }{"bad code, try again"})
-		if err != nil {
-			render.Error(w, fmt.Errorf("Execute: %w", err), 500)
-			return
-		}
+		welcomeLayout(welcomeKidsCodeMain("bad code, try again")).Render(w)
 	}
 }
 
 func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var email string
+	var emailAddr string
 
 	cookie, err := r.Cookie("kh_nonce")
 	if err != nil {
@@ -311,9 +399,7 @@ func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 	nonce := cookie.Value
 	code := r.FormValue("code")
 
-	// look up code
-	// XXX fetch by id alone, compare code, and add retry count
-	err = pgxscan.Get(ctx, s.Conn, &email, "select email from codes where nonce = $1 and code = $2", nonce, code)
+	err = pgxscan.Get(ctx, s.Conn, &emailAddr, "select email from codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
 		if err != pgx.ErrNoRows {
 			render.Error(w, fmt.Errorf("select email from codes: %w", err), 500)
@@ -321,17 +407,14 @@ func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if email != "" {
+	if emailAddr != "" {
 		log.Println("code is good")
-		// found email, code is good
-		// create user if not exists
-		user, err := family.FindOrCreateParentByEmail(ctx, s.Queries, email)
+		user, err := family.FindOrCreateParentByEmail(ctx, s.Queries, emailAddr)
 		if err != nil {
 			render.Error(w, fmt.Errorf("FindOrCreateParentByEmail: %w", err), 500)
 			return
 		}
 		log.Printf("user %v", user)
-		// create a new session
 		key, err := generateSecureString(32)
 		if err != nil {
 			render.Error(w, fmt.Errorf("generateSecureString: %w", err), 500)
@@ -342,22 +425,12 @@ func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 			render.Error(w, fmt.Errorf("error creating session: %w", err), 500)
 			return
 		}
-		// set session cookie
 		http.SetCookie(w, &http.Cookie{Name: "kh_session", Value: key, Path: "/", Expires: time.Now().Add(365 * 30 * 24 * time.Hour)})
-		// clear nonce cookie
 		http.SetCookie(w, &http.Cookie{Name: "kh_nonce", Path: "/", Expires: time.Now().Add(-time.Hour)})
-
-		// redirect
 		http.Redirect(w, r, "/", 303)
 	} else {
-		// code is bad
 		log.Println("code is bad")
-		err := welcomeParentsCodeTemplate.Execute(w, struct{ Error string }{"bad code, try again"})
-		if err != nil {
-			render.Error(w, fmt.Errorf("Execute: %w", err), 500)
-		}
-		//http.Redirect(w, r, "/welcome/parents/code?retry", 303)
-
+		welcomeLayout(welcomeParentsCodeMain("bad code, try again")).Render(w)
 	}
 }
 

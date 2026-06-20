@@ -30,7 +30,7 @@ For each: create a `page.go` alongside the `.gohtml`, translate HTML to Gomponen
 
 ---
 
-## Phase 2 — Medium complexity (welcome/onboarding + bots)
+## Phase 2 — Medium complexity (welcome/onboarding + bots) ✅ DONE
 
 Six welcome templates with conditional flows and form handling, plus bot chat list/edit/create.
 
@@ -46,7 +46,7 @@ Migrate `welcome/layout.gohtml` to a Gomponents wrapper function first, then mig
 
 ---
 
-## Phase 3 — High complexity (chat + gradients)
+## Phase 3 — High complexity (chat + gradients) ✅ DONE
 
 Nested templates, SSE wiring, and significant inline CSS/JS.
 

@@ -1,7 +1,6 @@
 package compose
 
 import (
-	_ "embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type service struct {
@@ -27,13 +28,6 @@ func (s *service) Router(r chi.Router) {
 	r.Post("/", s.post)
 }
 
-var (
-	//go:embed page.gohtml
-	pageContent string
-
-	pageTemplate = layout.MustParse(pageContent)
-)
-
 func (s *service) page(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := layout.FromContext(r.Context())
@@ -43,13 +37,33 @@ func (s *service) page(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, fmt.Errorf("GetConnections: %w", err), http.StatusInternalServerError)
 		return
 	}
-	render.Execute(w, pageTemplate, struct {
-		Layout      layout.Data
-		Connections []api.User
-	}{
-		Layout:      l,
-		Connections: connections,
-	})
+
+	layout.Layout(l, "Compose Postcard", composePage(connections)).Render(w)
+}
+
+func composePage(connections []api.User) g.Node {
+	return h.Div(
+		h.H1(g.Text("compose new postcard")),
+		h.Form(h.Method("post"),
+			h.Label(g.Attr("for", "recepient_field"), g.Text("To")),
+			h.Div(h.Class("nes-select"),
+				g.El("select", g.Attr("required", ""), h.Name("recipient"), h.ID("recipient_field"),
+					g.El("option", h.Value(""), g.Attr("disabled", ""), g.Attr("selected", ""), g.Attr("hidden", ""), g.Text("Select...")),
+					g.Map(connections, func(u api.User) g.Node {
+						return g.El("option", h.Value(fmt.Sprint(u.ID)), g.Text(u.Username))
+					}),
+				),
+			),
+			h.Div(h.Class("nes-field"),
+				h.Label(g.Attr("for", "subject_field"), g.Text("Subject")),
+				h.Input(g.Attr("required", ""), h.Name("subject"), h.Type("text"), h.ID("subject_field"), h.Class("nes-input")),
+			),
+			h.Label(g.Attr("for", "body_field"), g.Text("Message")),
+			h.Textarea(g.Attr("required", ""), g.Attr("rows", "10"), h.Name("body"), h.ID("body_field"), h.Class("nes-textarea")),
+			h.Button(h.Class("nes-btn primary"), g.Text("send")),
+			h.A(h.Href("inbox"), h.Class("nes-btn"), g.Text("cancel")),
+		),
+	)
 }
 
 func (s *service) post(w http.ResponseWriter, r *http.Request) {

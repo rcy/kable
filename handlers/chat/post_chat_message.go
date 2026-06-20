@@ -35,7 +35,7 @@ func (rs Resource) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	render.ExecuteNamed(w, pageTemplate, "chatInput", struct{ RoomID int }{RoomID: roomID})
+	chatInputEl(int64(roomID)).Render(w)
 }
 
 type RoomUser struct {
