@@ -13,6 +13,7 @@ processes = []
   PORT = "8080"
   ROOT_URL = "https://kable.ca"
   MUSIC_DOWNLOAD_PATH = "/data/music"
+  YTDLP_COOKIES_FILE = "/data/cookies.txt"
 
 [experimental]
   auto_rollback = true
