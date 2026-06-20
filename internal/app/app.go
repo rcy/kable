@@ -73,7 +73,6 @@ func (rs Service) Routes() chi.Router {
 	r.Route("/fun/music", func(r chi.Router) {
 		s := music.NewService(rs.Queries)
 		r.Get("/", s.Page)
-		r.Get("/install", s.Install)
 		r.Post("/download", s.Download)
 		r.Get("/status", s.Status)
 		r.Get("/file", s.File)
