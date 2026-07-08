@@ -38,6 +38,13 @@ func (s *service) Provider(next http.Handler) http.Handler {
 			return
 		}
 
+		http.SetCookie(w, &http.Cookie{
+			Name:    cookie.Name,
+			Value:   cookie.Value,
+			Path:    "/",
+			Expires: time.Now().Add(365 * 24 * time.Hour),
+		})
+
 		ctx = NewContext(r.Context(), user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
