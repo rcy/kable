@@ -11,26 +11,26 @@ import (
 	"oj/services/email"
 	"time"
 
-	"github.com/acaloiaro/neoq/jobs"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 )
 
-type service struct {
+type NotifyKidFriendArgs struct {
+	ID int64 `json:"id"`
+}
+
+func (NotifyKidFriendArgs) Kind() string { return "notify_kid_friend" }
+
+type Worker struct {
+	river.WorkerDefaults[NotifyKidFriendArgs]
 	Queries *api.Queries
-	Conn    pgxscan.Querier
+	Conn    *pgxpool.Pool
 }
 
-func NewService(q *api.Queries, conn pgxscan.Querier) *service {
-	return &service{Queries: q, Conn: conn}
-}
-
-func (s *service) Handle(ctx context.Context) error {
-	j, err := jobs.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-	log.Printf("handleNotifyKidFriend job id: %d, payload: %v", j.ID, j.Payload)
+func (w *Worker) Work(ctx context.Context, job *river.Job[NotifyKidFriendArgs]) error {
+	log.Printf("handleNotifyKidFriend job id: %d, friend id: %d", job.ID, job.Args.ID)
 
 	var friend struct {
 		ID        int64
@@ -41,7 +41,7 @@ func (s *service) Handle(ctx context.Context) error {
 		BUsername string    `db:"b_username"`
 	}
 
-	err = pgxscan.Get(ctx, s.Conn, &friend, `
+	err := pgxscan.Get(ctx, w.Conn, &friend, `
 select
   f.id, f.created_at,
   a.id a_id,
@@ -52,20 +52,20 @@ from friends f
 join users a on a.id = f.a_id
 join users b on b.id = f.b_id
 where f.id = $1
-`, j.Payload["id"])
+`, job.Args.ID)
 	if err != nil {
 		return fmt.Errorf("getting friend %w", err)
 	}
 
 	var mutualID int64
-	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
+	err = pgxscan.Get(ctx, w.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("getting mutual %w", err)
 	}
 
 	aUserLink := app.AbsoluteURL(url.URL{Path: fmt.Sprintf("/u/%d", friend.AID)})
 
-	bParents, err := s.Queries.ParentsByKidID(ctx, friend.BID)
+	bParents, err := w.Queries.ParentsByKidID(ctx, friend.BID)
 	if err != nil {
 		return fmt.Errorf("GetParents %w", err)
 	}
@@ -86,7 +86,7 @@ where f.id = $1
 		}
 	}
 
-	aParents, err := s.Queries.ParentsByKidID(ctx, friend.AID)
+	aParents, err := w.Queries.ParentsByKidID(ctx, friend.AID)
 	if err != nil {
 		return err
 	}

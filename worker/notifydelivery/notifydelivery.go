@@ -10,30 +10,29 @@ import (
 	"oj/services/email"
 	"time"
 
-	"github.com/acaloiaro/neoq/jobs"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 )
 
-type service struct {
+type NotifyDeliveryArgs struct {
+	ID int64 `json:"id"`
+}
+
+func (NotifyDeliveryArgs) Kind() string { return "notify_delivery" }
+
+type Worker struct {
+	river.WorkerDefaults[NotifyDeliveryArgs]
 	Queries *api.Queries
 	Conn    *pgxpool.Pool
 }
 
-func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
-	return &service{Queries: q, Conn: conn}
-}
-
-func (s *service) Handle(ctx context.Context) error {
-	j, err := jobs.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-	log.Printf("handleNotifyDelivery job id: %d, payload: %v", j.ID, j.Payload)
+func (w *Worker) Work(ctx context.Context, job *river.Job[NotifyDeliveryArgs]) error {
+	log.Printf("handleNotifyDelivery job id: %d, delivery id: %d", job.ID, job.Args.ID)
 
 	var delivery struct {
 		ID             int64
-		RecipientID    int64 `db:"recipient_id"`
+		RecipientID    int64  `db:"recipient_id"`
 		Username       string
 		Email          *string
 		SenderID       int64  `db:"sender_id"`
@@ -42,7 +41,7 @@ func (s *service) Handle(ctx context.Context) error {
 		SentAt         *time.Time `db:"sent_at"`
 	}
 
-	err = pgxscan.Get(ctx, s.Conn, &delivery, `
+	err := pgxscan.Get(ctx, w.Conn, &delivery, `
 select
   d.id,
   r.username username,
@@ -56,7 +55,7 @@ from deliveries d
 join users r on r.id = d.recipient_id
 join users s on s.id = d.sender_id
 join messages m on m.id = d.message_id
-where d.id = $1`, j.Payload["id"])
+where d.id = $1`, job.Args.ID)
 	if err != nil {
 		return err
 	}
@@ -72,11 +71,11 @@ where d.id = $1`, j.Payload["id"])
 	link := app.AbsoluteURL(url.URL{Path: fmt.Sprintf("/deliveries/%d", delivery.ID)})
 
 	if delivery.Email == nil {
-		recipient, err := s.Queries.UserByID(ctx, delivery.RecipientID)
+		recipient, err := w.Queries.UserByID(ctx, delivery.RecipientID)
 		if err != nil {
 			return err
 		}
-		parents, err := s.Queries.ParentsByKidID(ctx, recipient.ID)
+		parents, err := w.Queries.ParentsByKidID(ctx, recipient.ID)
 		if err != nil {
 			return err
 		}
