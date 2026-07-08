@@ -11,27 +11,26 @@ import (
 	"oj/services/email"
 	"time"
 
-	"github.com/acaloiaro/neoq/jobs"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 )
 
-type service struct {
-	Conn    *pgxpool.Pool
+type NotifyFriendArgs struct {
+	ID int64 `json:"id"`
+}
+
+func (NotifyFriendArgs) Kind() string { return "notify_friend" }
+
+type Worker struct {
+	river.WorkerDefaults[NotifyFriendArgs]
 	Queries *api.Queries
+	Conn    *pgxpool.Pool
 }
 
-func NewService(q *api.Queries, conn *pgxpool.Pool) *service {
-	return &service{Queries: q, Conn: conn}
-}
-
-func (s *service) Handle(ctx context.Context) error {
-	j, err := jobs.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-	log.Printf("handleNotifyFriend job id: %d, payload: %v", j.ID, j.Payload)
+func (w *Worker) Work(ctx context.Context, job *river.Job[NotifyFriendArgs]) error {
+	log.Printf("handleNotifyFriend job id: %d, friend id: %d", job.ID, job.Args.ID)
 
 	var friend struct {
 		ID          int64
@@ -43,7 +42,7 @@ func (s *service) Handle(ctx context.Context) error {
 		TargetEmail string    `db:"target_email"`
 	}
 
-	err = pgxscan.Get(ctx, s.Conn, &friend, `
+	err := pgxscan.Get(ctx, w.Conn, &friend, `
 select
   f.id, f.created_at,
   a.id a_id, a.email, a.username,
@@ -52,13 +51,13 @@ from friends f
 join users a on a.id = f.a_id
 join users b on b.id = f.b_id
 where f.id = $1
-`, j.Payload["id"])
+`, job.Args.ID)
 	if err != nil {
 		return err
 	}
 
 	var mutualID int64
-	err = pgxscan.Get(ctx, s.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
+	err = pgxscan.Get(ctx, w.Conn, &mutualID, `select id from friends where a_id = $1 and b_id = $2`, friend.BID, friend.AID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}

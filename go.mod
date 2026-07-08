@@ -3,7 +3,6 @@ module oj
 go 1.25.0
 
 require (
-	github.com/acaloiaro/neoq v0.19.0
 	github.com/alexandrevicenzi/go-sse v1.6.0
 	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-chi/chi/v5 v5.2.4
@@ -53,9 +52,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/guregu/null v4.0.0+incompatible // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -63,7 +60,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/jsuar/go-cron-descriptor v0.1.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -88,7 +84,6 @@ require (
 	github.com/riverqueue/river/rivershared v0.39.0 // indirect
 	github.com/riverqueue/river/rivertype v0.39.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
-	github.com/robfig/cron v1.2.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
