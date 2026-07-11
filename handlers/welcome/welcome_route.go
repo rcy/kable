@@ -3,6 +3,7 @@ package welcome
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	mathrand "math/rand"
@@ -349,7 +350,7 @@ func (s *service) kidsCodeAction(w http.ResponseWriter, r *http.Request) {
 
 	err = pgxscan.Get(ctx, s.Conn, &userID, "select user_id from kids_codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
-		if err != pgx.ErrNoRows {
+		if !errors.Is(err, pgx.ErrNoRows) {
 			render.Error(w, fmt.Errorf("select user_id from kids_codes: %w", err), 500)
 			return
 		}
@@ -401,7 +402,7 @@ func (s *service) parentsCodeAction(w http.ResponseWriter, r *http.Request) {
 
 	err = pgxscan.Get(ctx, s.Conn, &emailAddr, "select email from codes where nonce = $1 and code = $2", nonce, code)
 	if err != nil {
-		if err != pgx.ErrNoRows {
+		if !errors.Is(err, pgx.ErrNoRows) {
 			render.Error(w, fmt.Errorf("select email from codes: %w", err), 500)
 			return
 		}
