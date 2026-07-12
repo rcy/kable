@@ -42,9 +42,9 @@ CREATE TABLE public.bots (
     id bigint NOT NULL,
     created_at timestamp with time zone,
     owner_id bigint,
-    assistant_id text,
     name text,
     description text,
+    model text NOT NULL DEFAULT '',
     published boolean DEFAULT false
 );
 
@@ -308,12 +308,27 @@ CREATE TABLE public.threads (
     id bigint NOT NULL,
     created_at timestamp with time zone,
     thread_id text,
-    assistant_id text,
-    user_id bigint
+    user_id bigint,
+    bot_id bigint
 );
 
 
 ALTER TABLE public.threads OWNER TO appuser;
+
+--
+-- Name: bot_messages; Type: TABLE; Schema: public; Owner: appuser
+--
+
+CREATE TABLE public.bot_messages (
+    id bigint NOT NULL,
+    created_at timestamp with time zone,
+    thread_id bigint,
+    role text NOT NULL,
+    content text NOT NULL
+);
+
+
+ALTER TABLE public.bot_messages OWNER TO appuser;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: appuser

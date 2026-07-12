@@ -6,12 +6,21 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-var apiKey = config.MustGetenv("OPENAI_API_KEY")
-
 type AI struct {
 	Client *openai.Client
+	Model  string
 }
 
 func New() *AI {
-	return &AI{Client: openai.NewClient(apiKey)}
+	apiKey := config.Getenv("OPENAI_API_KEY", "")
+	baseURL := config.Getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	model := config.Getenv("OPENAI_MODEL", "deepseek-chat")
+
+	cfg := openai.DefaultConfig(apiKey)
+	cfg.BaseURL = baseURL
+
+	return &AI{
+		Client: openai.NewClientWithConfig(cfg),
+		Model:  model,
+	}
 }

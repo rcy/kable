@@ -123,7 +123,7 @@ func (rs Service) Routes() chi.Router {
 		r.Post("/fun/notes/from-chat/{messageID}", s.PostFromChat)
 	})
 
-	r.Mount("/bots", bots.Resource{Model: rs.Queries, AI: ai.New().Client}.Routes())
+	r.Mount("/bots", bots.Resource{Model: rs.Queries, AI: ai.New()}.Routes())
 
 	//r.Route("/u/{userID}", u.NewService(rs.Queries).Router)
 

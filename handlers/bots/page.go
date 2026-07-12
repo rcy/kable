@@ -6,23 +6,21 @@ import (
 	"oj/api"
 	"oj/handlers/layout"
 	"oj/handlers/render"
+	"oj/internal/ai"
 	"oj/internal/middleware/auth"
 	"oj/md"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sashabaranov/go-openai"
+	"github.com/jackc/pgx/v5/pgtype"
+	openai "github.com/sashabaranov/go-openai"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
 
-func strptr(str string) *string {
-	return &str
-}
-
 type Resource struct {
 	Model *api.Queries
-	AI    *openai.Client
+	AI    *ai.AI
 }
 
 func (rs Resource) Routes() chi.Router {
@@ -38,7 +36,6 @@ func (rs Resource) Routes() chi.Router {
 		r.Post("/edit", rs.postEdit)
 		r.Get("/chat/{threadID}", rs.chatPage)
 		r.Post("/chat/{threadID}/messages", rs.postMessage)
-		r.Get("/chat/{threadID}/runstatus/{runID}", rs.getRunStatus)
 	})
 	return r
 }
@@ -72,23 +69,11 @@ func (rs Resource) postCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	instructions := r.FormValue("instructions")
 
-	model := openai.GPT4oMini
-
-	asst, err := rs.AI.CreateAssistant(ctx, openai.AssistantRequest{
-		Model:        model,
-		Name:         &name,
-		Instructions: &instructions,
-	})
-	if err != nil {
-		render.Error(w, fmt.Errorf("CreateAssistant: %w", err), http.StatusInternalServerError)
-		return
-	}
-
 	bot, err := rs.Model.CreateBot(ctx, api.CreateBotParams{
 		OwnerID:     user.ID,
-		AssistantID: asst.ID,
 		Name:        name,
 		Description: instructions,
+		Model:       rs.AI.Model,
 	})
 	if err != nil {
 		render.Error(w, fmt.Errorf("CreateBot: %w", err), http.StatusInternalServerError)
@@ -117,9 +102,9 @@ func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	instructions := r.FormValue("instructions")
-	if instructions == "" {
-		http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
-		return
+	model := r.FormValue("model")
+	if model == "" {
+		model = rs.AI.Model
 	}
 
 	bot, err := rs.Model.UpdateBotDescription(ctx, api.UpdateBotDescriptionParams{
@@ -127,18 +112,10 @@ func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
 		ID:          bot.ID,
 		Name:        name,
 		Description: instructions,
+		Model:       model,
 	})
 	if err != nil {
 		render.Error(w, fmt.Errorf("UpdateBotDescription: %w", err), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = rs.AI.ModifyAssistant(ctx, bot.AssistantID, openai.AssistantRequest{
-		Name:         &name,
-		Instructions: &instructions,
-	})
-	if err != nil {
-		render.Error(w, fmt.Errorf("ModifyAssistant: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -158,12 +135,12 @@ func (rs Resource) chatRedirectPage(w http.ResponseWriter, r *http.Request) {
 	user := auth.FromContext(ctx)
 	bot := botFromContext(ctx)
 
-	threads, err := rs.Model.AssistantThreads(ctx, api.AssistantThreadsParams{
-		UserID:      user.ID,
-		AssistantID: bot.AssistantID,
+	threads, err := rs.Model.BotThreads(ctx, api.BotThreadsParams{
+		UserID: user.ID,
+		BotID:  pgtype.Int8{Int64: bot.ID, Valid: true},
 	})
 	if err != nil {
-		render.Error(w, fmt.Errorf("AssistantThreads: %w", err), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("BotThreads: %w", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -171,23 +148,16 @@ func (rs Resource) chatRedirectPage(w http.ResponseWriter, r *http.Request) {
 	if len(threads) > 0 {
 		threadID = threads[0].ThreadID
 	} else {
-		thread, err := rs.AI.CreateThread(ctx, openai.ThreadRequest{})
-		if err != nil {
-			render.Error(w, fmt.Errorf("CreateThread: %w", err), http.StatusInternalServerError)
-			return
-		}
-
+		threadID = fmt.Sprintf("thread_%d_%d", bot.ID, user.ID)
 		_, err = rs.Model.CreateThread(ctx, api.CreateThreadParams{
-			AssistantID: bot.AssistantID,
-			ThreadID:    thread.ID,
-			UserID:      user.ID,
+			BotID:    pgtype.Int8{Int64: bot.ID, Valid: true},
+			ThreadID: threadID,
+			UserID:   user.ID,
 		})
 		if err != nil {
 			render.Error(w, fmt.Errorf("CreateThread: %w", err), http.StatusInternalServerError)
 			return
 		}
-
-		threadID = thread.ID
 	}
 
 	http.Redirect(w, r, r.URL.Path+"/"+threadID, http.StatusSeeOther)
@@ -207,24 +177,19 @@ func (rs Resource) chatPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	thread, err := rs.AI.RetrieveThread(ctx, userThread.ThreadID)
+	messages, err := rs.Model.ThreadMessages(ctx, pgtype.Int8{Int64: userThread.ID, Valid: true})
 	if err != nil {
-		render.Error(w, fmt.Errorf("RetrieveThread: %w", err), http.StatusInternalServerError)
+		render.Error(w, fmt.Errorf("ThreadMessages: %w", err), http.StatusInternalServerError)
 		return
 	}
 
-	messagesList, err := rs.AI.ListMessage(ctx, thread.ID, nil, strptr("desc"), nil, nil, nil)
-	if err != nil {
-		render.Error(w, fmt.Errorf("ListMessage: %w", err), http.StatusInternalServerError)
-		return
-	}
-
-	layout.Layout(l, bot.Name, botsChatPage(bot, l.User, thread, messagesList.Messages)).Render(w)
+	layout.Layout(l, bot.Name, botsChatPage(bot, l.User, userThread, messages)).Render(w)
 }
 
 func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bot := botFromContext(ctx)
+	l := layout.FromContext(ctx)
 
 	content := strings.TrimSpace(r.FormValue("message"))
 	if content == "" {
@@ -234,51 +199,70 @@ func (rs Resource) postMessage(w http.ResponseWriter, r *http.Request) {
 
 	threadID := chi.URLParam(r, "threadID")
 
-	_, err := rs.AI.CreateMessage(ctx, threadID, openai.MessageRequest{
-		Role:    openai.ChatMessageRoleUser,
-		Content: content,
+	userThread, err := rs.Model.UserThreadByID(ctx, api.UserThreadByIDParams{
+		UserID:   l.User.ID,
+		ThreadID: threadID,
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("CreateMessage: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("UserThreadByID: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	run, err := rs.AI.CreateRun(ctx, threadID, openai.RunRequest{
-		AssistantID: bot.AssistantID,
+	_, err = rs.Model.CreateBotMessage(ctx, api.CreateBotMessageParams{
+		ThreadID: pgtype.Int8{Int64: userThread.ID, Valid: true},
+		Role:     "user",
+		Content:  content,
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("CreateRun: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("CreateBotMessage: %s", err), http.StatusInternalServerError)
 		return
+	}
+
+	messages, err := rs.Model.ThreadMessages(ctx, pgtype.Int8{Int64: userThread.ID, Valid: true})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("ThreadMessages: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	chatMessages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: bot.Description},
+	}
+	for _, msg := range messages {
+		chatMessages = append(chatMessages, openai.ChatCompletionMessage{
+			Role:    msg.Role,
+			Content: msg.Content,
+		})
+	}
+
+	model := bot.Model
+	if model == "" {
+		model = rs.AI.Model
+	}
+
+	resp, err := rs.AI.Client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model:    model,
+		Messages: chatMessages,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("CreateChatCompletion: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	if len(resp.Choices) > 0 {
+		assistantContent := resp.Choices[0].Message.Content
+		_, err = rs.Model.CreateBotMessage(ctx, api.CreateBotMessageParams{
+			ThreadID: pgtype.Int8{Int64: userThread.ID, Valid: true},
+			Role:     "assistant",
+			Content:  assistantContent,
+		})
+		if err != nil {
+			http.Error(w, fmt.Sprintf("CreateBotMessage: %s", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Add("HX-Trigger", "messagesUpdated")
-	botsThinkingEl(bot, run).Render(w)
-}
-
-func (rs Resource) getRunStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	bot := botFromContext(ctx)
-
-	run, err := rs.AI.RetrieveRun(ctx, chi.URLParam(r, "threadID"), chi.URLParam(r, "runID"))
-	if err != nil {
-		render.Error(w, fmt.Errorf("RetrieveRun: %w", err), http.StatusInternalServerError)
-		return
-	}
-
-	switch run.Status {
-	case openai.RunStatusQueued, openai.RunStatusInProgress:
-		botsThinkingEl(bot, run).Render(w)
-	default:
-		w.Header().Add("HX-Trigger", "messagesUpdated")
-
-		thread, err := rs.AI.RetrieveThread(ctx, run.ThreadID)
-		if err != nil {
-			render.Error(w, fmt.Errorf("RetrieveThread: %w", err), http.StatusInternalServerError)
-			return
-		}
-
-		botsInputEl(bot, thread).Render(w)
-	}
+	botsInputEl(bot, userThread).Render(w)
 }
 
 func botAvatarURL(botID int64) string {
@@ -373,6 +357,10 @@ func botsEditPage(bot api.Bot) g.Node {
 						g.Text(bot.Description),
 					),
 				),
+				h.Div(h.Class("nes-field"),
+					h.Label(g.Attr("for", "model"), g.Text("Model")),
+					h.Input(h.ID("model"), h.Class("nes-input"), h.Name("model"), g.Attr("placeholder", "deepseek-chat"), h.Value(bot.Model)),
+				),
 				h.Button(h.Class("nes-btn is-primary"), g.Text("Save")),
 				h.A(h.Href(fmt.Sprintf("/bots/%d", bot.ID)), h.Class("nes-btn"), g.Text("Cancel")),
 			),
@@ -380,7 +368,7 @@ func botsEditPage(bot api.Bot) g.Node {
 	)
 }
 
-func botsChatPage(bot api.Bot, user api.User, thread openai.Thread, messages []openai.Message) g.Node {
+func botsChatPage(bot api.Bot, user api.User, thread api.Thread, messages []api.BotMessage) g.Node {
 	return h.Div(h.Style("height:100%; display: flex; flex-direction: column; padding-bottom: 1em"),
 		h.Div(h.Class("nes-container ghost"),
 			h.Img(h.Height("64px"), h.Width("64px"), h.Src(botAvatarURL(bot.ID))),
@@ -390,43 +378,38 @@ func botsChatPage(bot api.Bot, user api.User, thread openai.Thread, messages []o
 		h.Div(h.Style("background: white"),
 			botsInputEl(bot, thread),
 		),
+		h.Script(g.Raw("document.getElementById('messages-container').scrollTop = document.getElementById('messages-container').scrollHeight")),
 	)
 }
 
-func botsMessagesEl(bot api.Bot, user api.User, thread openai.Thread, messages []openai.Message) g.Node {
+func botsMessagesEl(bot api.Bot, user api.User, thread api.Thread, messages []api.BotMessage) g.Node {
 	return h.Div(
 		h.ID("messages-container"),
 		h.Class("nes-container ghost"),
-		h.Style("overflow-y: scroll; display: flex; flex-direction: column-reverse; gap:4em"),
-		g.Attr("hx-get", thread.ID),
+		h.Style("flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap:4em"),
+		g.Attr("hx-on::after-settle", "this.scrollTop = this.scrollHeight"),
+		g.Attr("hx-get", thread.ThreadID),
 		g.Attr("hx-trigger", "messagesUpdated from:body"),
 		g.Attr("hx-select", "#messages-container"),
 		g.Attr("hx-swap", "outerHTML"),
-		g.Map(messages, func(msg openai.Message) g.Node {
+		g.Map(messages, func(msg api.BotMessage) g.Node {
 			return botsMessageEl(bot, user, msg)
 		}),
 	)
 }
 
-func botsMessageEl(bot api.Bot, user api.User, msg openai.Message) g.Node {
+func botsMessageEl(bot api.Bot, user api.User, msg api.BotMessage) g.Node {
 	avatarSrc := user.Avatar.URL()
 	if msg.Role == "assistant" {
 		avatarSrc = botAvatarURL(bot.ID)
 	}
 	return h.Div(h.Style("display:flex; gap:2em"),
 		h.Div(h.Img(h.Height("64px"), h.Width("64px"), h.Src(avatarSrc))),
-		h.Div(
-			g.Map(msg.Content, func(c openai.MessageContent) g.Node {
-				if c.Text == nil {
-					return g.Text("")
-				}
-				return botMarkdown(c.Text.Value)
-			}),
-		),
+		h.Div(botMarkdown(msg.Content)),
 	)
 }
 
-func botsInputEl(bot api.Bot, thread openai.Thread) g.Node {
+func botsInputEl(bot api.Bot, thread api.Thread) g.Node {
 	return h.Section(h.Style("background: black"),
 		h.Div(h.Style("float:right"), g.Text("\u00a0")),
 		h.Input(h.Class("nes-input"),
@@ -434,23 +417,9 @@ func botsInputEl(bot api.Bot, thread openai.Thread) g.Node {
 			h.Type("text"),
 			h.Name("message"),
 			g.Attr("placeholder", "Message "+bot.Name),
-			g.Attr("hx-post", thread.ID+"/messages"),
+			g.Attr("hx-post", thread.ThreadID+"/messages"),
 			g.Attr("hx-swap", "outerHTML"),
 			g.Attr("hx-target", "closest section"),
-		),
-	)
-}
-
-func botsThinkingEl(bot api.Bot, run openai.Run) g.Node {
-	return h.Section(h.Style("background: black; color: white"),
-		h.Div(h.Style("float:right"),
-			g.Attr("hx-get", fmt.Sprintf("%s/runstatus/%s", run.ThreadID, run.ID)),
-			g.Attr("hx-trigger", "load delay:300ms"),
-			g.Attr("hx-target", "closest section"),
-			g.Text(string(run.Status)),
-		),
-		h.Input(h.Class("nes-input"), h.Type("text"), g.Attr("disabled", ""),
-			g.Attr("placeholder", "Message "+bot.Name),
 		),
 	)
 }

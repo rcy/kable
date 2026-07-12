@@ -1,5 +1,5 @@
 -- name: CreateBot :one
-insert into bots(owner_id, assistant_id, name, description) values(@owner_id,@assistant_id,@name,@description) returning *;
+insert into bots(owner_id, name, description, model) values(@owner_id,@name,@description,@model) returning *;
 
 -- name: AllBots :many
 select sqlc.embed(bots), sqlc.embed(users) from bots join users on bots.owner_id = users.id order by bots.created_at desc;
@@ -14,5 +14,4 @@ select * from bots where owner_id = @owner_id or published = 1;
 select * from bots where id = @id;
 
 -- name: UpdateBotDescription :one
-update bots set description = @description, name = @name where id = @id and owner_id = @owner_id returning *;
-
+update bots set description = @description, name = @name, model = @model where id = @id and owner_id = @owner_id returning *;
