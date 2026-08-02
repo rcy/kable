@@ -18,6 +18,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -115,11 +116,34 @@ func welcomeParentsMain() g.Node {
 		h.Div(h.Class("nes-container"),
 			h.H2(g.Text("Parent Sign In "), h.Small(g.Text("Step 1: Email"))),
 			h.P(g.Text("New and returning parents sign in here.")),
+			h.P(h.Class("nes-text is-error"), g.Text("New sign ups are temporarily disabled.  Only existing accounts can sign in.")),
 			h.Form(h.Method("post"), h.Action("/welcome/parents/email"),
 				h.Label(
 					g.Text("Email"),
 					h.Input(g.Attr("placeholder", "human@example.com"), h.Class("nes-input"), h.Name("email"), h.Type("email"), g.Attr("required", "")),
 				),
+				h.Button(h.Class("nes-btn is-primary"), h.Type("submit"), g.Text("Submit")),
+			),
+		),
+		h.Div(h.Class("box kid"),
+			g.Text("If you are looking for the kids login, "),
+			h.A(h.Class("nes-text is-success"), h.Href("/welcome/kids"), g.Text("click here!")),
+		),
+	)
+}
+
+func welcomeParentsMainWithError(errMsg string) g.Node {
+	return h.Div(h.Style("display:flex; flex-direction:column;gap:2em"),
+		h.Div(h.Class("nes-container"),
+			h.H2(g.Text("Parent Sign In "), h.Small(g.Text("Step 1: Email"))),
+			h.P(g.Text("New and returning parents sign in here.")),
+			h.P(h.Class("nes-text is-error"), g.Text("New sign ups are temporarily disabled.  Only existing accounts can sign in.")),
+			h.Form(h.Method("post"), h.Action("/welcome/parents/email"),
+				h.Label(
+					g.Text("Email"),
+					h.Input(g.Attr("placeholder", "human@example.com"), h.Class("nes-input"), h.Name("email"), h.Type("email"), g.Attr("required", "")),
+				),
+				h.Div(h.Class("nes-text is-error"), g.Text(errMsg)),
 				h.Button(h.Class("nes-btn is-primary"), h.Type("submit"), g.Text("Submit")),
 			),
 		),
@@ -248,6 +272,16 @@ func (s *service) emailRegisterAction(w http.ResponseWriter, r *http.Request) {
 	address := r.FormValue("email")
 	if address == "" {
 		http.Redirect(w, r, "/welcome/parents", http.StatusSeeOther)
+		return
+	}
+
+	_, err := s.Queries.UserByEmail(ctx, pgtype.Text{String: address, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			welcomeLayout(welcomeParentsMainWithError("Sign ups are temporarily disabled.  If you already have an account, please double check your email address.")).Render(w)
+			return
+		}
+		render.Error(w, fmt.Errorf("UserByEmail: %w", err), 500)
 		return
 	}
 
