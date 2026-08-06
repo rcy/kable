@@ -10,6 +10,7 @@ import (
 	"oj/handlers/layout"
 	"oj/handlers/render"
 	"oj/internal/middleware/auth"
+	"oj/md"
 	"oj/services/room"
 	"oj/templatehelpers"
 	"slices"
@@ -140,7 +141,7 @@ func chatMessageOtherEl(row api.RecentRoomMessagesRow) g.Node {
 			h.Img(h.Style("margin-bottom: 8px"), h.Src(row.User.Avatar.URL()), h.Width("80"), h.Height("80")),
 		),
 		h.Div(h.Class("nes-balloon from-left"), h.Style("overflow-wrap: break-word; max-width: 70%"),
-			h.P(g.Raw(row.Message.Body)),
+			h.P(g.Raw(string(md.RenderString(row.Message.Body)))),
 			h.Div(h.Style("display:flex; gap:1em; font-size: .8em; float:right; color: gray"),
 				g.Text(templatehelpers.Ago(row.Message.CreatedAt)),
 				h.Div(h.A(h.Href("#"),
@@ -158,7 +159,7 @@ func chatMessageMineEl(row api.RecentRoomMessagesRow) g.Node {
 	return h.Div(h.Style("display:flex; align-items:end"),
 		h.Div(h.Style("flex:1")),
 		h.Div(h.Class("nes-balloon from-right"), h.Style("overflow-wrap: break-word; max-width: 70%"),
-			h.P(g.Raw(row.Message.Body)),
+			h.P(g.Raw(string(md.RenderString(row.Message.Body)))),
 			h.Div(h.Style("display:flex; gap:1em; font-size: .8em; float:right; color: gray"),
 				g.Text(templatehelpers.Ago(row.Message.CreatedAt)),
 				h.Div(h.A(h.Href("#"),
