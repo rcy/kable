@@ -16,3 +16,17 @@ select * from bots where id = @id;
 -- name: UpdateBotDescription :one
 update bots set description = @description, name = @name where id = @id and owner_id = @owner_id returning *;
 
+-- name: DeleteBotMessages :exec
+delete from bot_messages m where m.thread_id in (
+    select t.id from threads t join bots b on t.bot_id = b.id
+    where b.id = @bot_id and b.owner_id = @owner_id
+);
+
+-- name: DeleteBotThreads :exec
+delete from threads t where t.bot_id in (
+    select b.id from bots b where b.id = @bot_id and b.owner_id = @owner_id
+);
+
+-- name: DeleteBot :exec
+delete from bots b where b.id = @id and b.owner_id = @owner_id;
+

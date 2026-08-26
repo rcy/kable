@@ -36,6 +36,7 @@ func (rs Resource) Routes() chi.Router {
 		r.Get("/chat", rs.chatRedirectPage)
 		r.Get("/edit", rs.editPage)
 		r.Post("/edit", rs.postEdit)
+		r.Post("/delete", rs.postDelete)
 		r.Get("/chat/{threadID}", rs.chatPage)
 		r.Post("/chat/{threadID}/messages", rs.postMessage)
 	})
@@ -89,7 +90,7 @@ func (rs Resource) editPage(w http.ResponseWriter, r *http.Request) {
 	l := layout.FromContext(ctx)
 	bot := botFromContext(ctx)
 
-	layout.Layout(l, "Edit Bot", botsEditPage(bot)).Render(w)
+	layout.Layout(l, "Edit Bot", botsEditPage(bot, bot.OwnerID == l.User.ID)).Render(w)
 }
 
 func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +121,27 @@ func (rs Resource) postEdit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/bots/%d", bot.ID), http.StatusSeeOther)
+}
+
+func (rs Resource) postDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	bot := botFromContext(ctx)
+	user := auth.FromContext(ctx)
+
+	if err := rs.Model.DeleteBotMessages(ctx, api.DeleteBotMessagesParams{BotID: bot.ID, OwnerID: user.ID}); err != nil {
+		render.Error(w, fmt.Errorf("DeleteBotMessages: %w", err), http.StatusInternalServerError)
+		return
+	}
+	if err := rs.Model.DeleteBotThreads(ctx, api.DeleteBotThreadsParams{BotID: bot.ID, OwnerID: user.ID}); err != nil {
+		render.Error(w, fmt.Errorf("DeleteBotThreads: %w", err), http.StatusInternalServerError)
+		return
+	}
+	if err := rs.Model.DeleteBot(ctx, api.DeleteBotParams{ID: bot.ID, OwnerID: user.ID}); err != nil {
+		render.Error(w, fmt.Errorf("DeleteBot: %w", err), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/bots", http.StatusSeeOther)
 }
 
 func (rs Resource) assistantPage(w http.ResponseWriter, r *http.Request) {
@@ -363,7 +385,7 @@ func botsCreatePage() g.Node {
 	)
 }
 
-func botsEditPage(bot api.Bot) g.Node {
+func botsEditPage(bot api.Bot, isOwner bool) g.Node {
 	return h.Div(h.Class("nes-container ghost"),
 		h.H1(g.Text("Welcome to the Bot Workshop")),
 		h.P(g.Text("Let's edit your bot.")),
@@ -382,6 +404,14 @@ func botsEditPage(bot api.Bot) g.Node {
 				),
 				h.Button(h.Class("nes-btn is-primary"), g.Text("Save")),
 				h.A(h.Href(fmt.Sprintf("/bots/%d", bot.ID)), h.Class("nes-btn"), g.Text("Cancel")),
+			),
+		),
+		g.If(isOwner,
+			h.Div(h.Style("margin-top: 2em"),
+				h.Form(h.Method("post"), h.Action(fmt.Sprintf("/bots/%d/delete", bot.ID)),
+					g.Attr("onsubmit", "return confirm('Delete this bot? This cannot be undone.')"),
+					h.Button(h.Class("nes-btn is-error"), g.Text("Delete Bot")),
+				),
 			),
 		),
 	)

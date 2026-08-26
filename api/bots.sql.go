@@ -98,6 +98,53 @@ func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, erro
 	return i, err
 }
 
+const deleteBot = `-- name: DeleteBot :exec
+delete from bots b where b.id = $1 and b.owner_id = $2
+`
+
+type DeleteBotParams struct {
+	ID      int64
+	OwnerID int64
+}
+
+func (q *Queries) DeleteBot(ctx context.Context, arg DeleteBotParams) error {
+	_, err := q.db.Exec(ctx, deleteBot, arg.ID, arg.OwnerID)
+	return err
+}
+
+const deleteBotMessages = `-- name: DeleteBotMessages :exec
+delete from bot_messages m where m.thread_id in (
+    select t.id from threads t join bots b on t.bot_id = b.id
+    where b.id = $1 and b.owner_id = $2
+)
+`
+
+type DeleteBotMessagesParams struct {
+	BotID   int64
+	OwnerID int64
+}
+
+func (q *Queries) DeleteBotMessages(ctx context.Context, arg DeleteBotMessagesParams) error {
+	_, err := q.db.Exec(ctx, deleteBotMessages, arg.BotID, arg.OwnerID)
+	return err
+}
+
+const deleteBotThreads = `-- name: DeleteBotThreads :exec
+delete from threads t where t.bot_id in (
+    select b.id from bots b where b.id = $1 and b.owner_id = $2
+)
+`
+
+type DeleteBotThreadsParams struct {
+	BotID   int64
+	OwnerID int64
+}
+
+func (q *Queries) DeleteBotThreads(ctx context.Context, arg DeleteBotThreadsParams) error {
+	_, err := q.db.Exec(ctx, deleteBotThreads, arg.BotID, arg.OwnerID)
+	return err
+}
+
 const publishedBots = `-- name: PublishedBots :many
 select id, created_at, owner_id, name, description, published from bots where published = 1
 `
