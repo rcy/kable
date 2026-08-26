@@ -34,6 +34,17 @@ CREATE TABLE public.attempts (
 
 ALTER TABLE public.attempts OWNER TO appuser;
 
+CREATE TABLE public.bot_messages (
+    id bigint NOT NULL,
+    created_at timestamp with time zone,
+    thread_id bigint,
+    role text,
+    content text
+);
+
+
+ALTER TABLE public.bot_messages OWNER TO appuser;
+
 --
 -- Name: bots; Type: TABLE; Schema: public; Owner: appuser
 --
@@ -42,7 +53,6 @@ CREATE TABLE public.bots (
     id bigint NOT NULL,
     created_at timestamp with time zone,
     owner_id bigint,
-    assistant_id text,
     name text,
     description text,
     published boolean DEFAULT false
@@ -307,8 +317,7 @@ ALTER TABLE public.sessions OWNER TO appuser;
 CREATE TABLE public.threads (
     id bigint NOT NULL,
     created_at timestamp with time zone,
-    thread_id text,
-    assistant_id text,
+    bot_id bigint,
     user_id bigint
 );
 

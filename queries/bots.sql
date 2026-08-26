@@ -1,5 +1,5 @@
 -- name: CreateBot :one
-insert into bots(owner_id, assistant_id, name, description) values(@owner_id,@assistant_id,@name,@description) returning *;
+insert into bots(owner_id, name, description) values(@owner_id,@name,@description) returning *;
 
 -- name: AllBots :many
 select sqlc.embed(bots), sqlc.embed(users) from bots join users on bots.owner_id = users.id order by bots.created_at desc;

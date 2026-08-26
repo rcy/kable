@@ -72,10 +72,17 @@ type Bot struct {
 	ID          int64
 	CreatedAt   pgtype.Timestamptz
 	OwnerID     int64
-	AssistantID string
 	Name        string
 	Description string
 	Published   bool
+}
+
+type BotMessage struct {
+	ID        int64
+	CreatedAt pgtype.Timestamptz
+	ThreadID  int64
+	Role      string
+	Content   string
 }
 
 type ChessMatch struct {
@@ -289,11 +296,10 @@ type Session struct {
 }
 
 type Thread struct {
-	ID          int64
-	CreatedAt   pgtype.Timestamptz
-	ThreadID    string
-	AssistantID string
-	UserID      int64
+	ID        int64
+	CreatedAt pgtype.Timestamptz
+	UserID    int64
+	BotID     int64
 }
 
 type User struct {
