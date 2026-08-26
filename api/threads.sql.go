@@ -9,17 +9,17 @@ import (
 	"context"
 )
 
-const assistantThreads = `-- name: AssistantThreads :many
-select id, created_at, thread_id, assistant_id, user_id from threads where assistant_id = $1 and user_id = $2
+const botThreads = `-- name: BotThreads :many
+select id, created_at, user_id, bot_id from threads where bot_id = $1 and user_id = $2
 `
 
-type AssistantThreadsParams struct {
-	AssistantID string
-	UserID      int64
+type BotThreadsParams struct {
+	BotID  int64
+	UserID int64
 }
 
-func (q *Queries) AssistantThreads(ctx context.Context, arg AssistantThreadsParams) ([]Thread, error) {
-	rows, err := q.db.Query(ctx, assistantThreads, arg.AssistantID, arg.UserID)
+func (q *Queries) BotThreads(ctx context.Context, arg BotThreadsParams) ([]Thread, error) {
+	rows, err := q.db.Query(ctx, botThreads, arg.BotID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +30,8 @@ func (q *Queries) AssistantThreads(ctx context.Context, arg AssistantThreadsPara
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
-			&i.ThreadID,
-			&i.AssistantID,
 			&i.UserID,
+			&i.BotID,
 		); err != nil {
 			return nil, err
 		}
@@ -45,46 +44,43 @@ func (q *Queries) AssistantThreads(ctx context.Context, arg AssistantThreadsPara
 }
 
 const createThread = `-- name: CreateThread :one
-insert into threads(user_id, thread_id, assistant_id) values($1,$2,$3) returning id, created_at, thread_id, assistant_id, user_id
+insert into threads(user_id, bot_id) values($1,$2) returning id, created_at, user_id, bot_id
 `
 
 type CreateThreadParams struct {
-	UserID      int64
-	ThreadID    string
-	AssistantID string
+	UserID int64
+	BotID  int64
 }
 
 func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
-	row := q.db.QueryRow(ctx, createThread, arg.UserID, arg.ThreadID, arg.AssistantID)
+	row := q.db.QueryRow(ctx, createThread, arg.UserID, arg.BotID)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
-		&i.ThreadID,
-		&i.AssistantID,
 		&i.UserID,
+		&i.BotID,
 	)
 	return i, err
 }
 
 const userThreadByID = `-- name: UserThreadByID :one
-select id, created_at, thread_id, assistant_id, user_id from threads where user_id = $1 and thread_id = $2
+select id, created_at, user_id, bot_id from threads where user_id = $1 and id = $2
 `
 
 type UserThreadByIDParams struct {
-	UserID   int64
-	ThreadID string
+	UserID int64
+	ID     int64
 }
 
 func (q *Queries) UserThreadByID(ctx context.Context, arg UserThreadByIDParams) (Thread, error) {
-	row := q.db.QueryRow(ctx, userThreadByID, arg.UserID, arg.ThreadID)
+	row := q.db.QueryRow(ctx, userThreadByID, arg.UserID, arg.ID)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
-		&i.ThreadID,
-		&i.AssistantID,
 		&i.UserID,
+		&i.BotID,
 	)
 	return i, err
 }

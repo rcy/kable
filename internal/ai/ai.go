@@ -2,16 +2,22 @@ package ai
 
 import (
 	"oj/internal/config"
+	"os"
 
-	openai "github.com/sashabaranov/go-openai"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 )
 
-var apiKey = config.MustGetenv("OPENAI_API_KEY")
+var apiKey = config.MustGetenv("DEEPSEEK_API_KEY")
 
 type AI struct {
 	Client *openai.Client
 }
 
 func New() *AI {
-	return &AI{Client: openai.NewClient(apiKey)}
+	client := openai.NewClient(
+		option.WithBaseURL("https://api.deepseek.com/v1"),
+		option.WithAPIKey(os.Getenv("DEEPSEEK_API_KEY")),
+	)
+	return &AI{Client: &client}
 }

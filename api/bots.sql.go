@@ -10,7 +10,7 @@ import (
 )
 
 const allBots = `-- name: AllBots :many
-select bots.id, bots.created_at, bots.owner_id, bots.assistant_id, bots.name, bots.description, bots.published, users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from bots join users on bots.owner_id = users.id order by bots.created_at desc
+select bots.id, bots.created_at, bots.owner_id, bots.name, bots.description, bots.published, users.id, users.created_at, users.username, users.email, users.avatar_url_deprecated, users.is_parent, users.bio, users.become_user_id, users.admin, users.gradient, users.avatar from bots join users on bots.owner_id = users.id order by bots.created_at desc
 `
 
 type AllBotsRow struct {
@@ -31,7 +31,6 @@ func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
 			&i.Bot.ID,
 			&i.Bot.CreatedAt,
 			&i.Bot.OwnerID,
-			&i.Bot.AssistantID,
 			&i.Bot.Name,
 			&i.Bot.Description,
 			&i.Bot.Published,
@@ -58,7 +57,7 @@ func (q *Queries) AllBots(ctx context.Context) ([]AllBotsRow, error) {
 }
 
 const bot = `-- name: Bot :one
-select id, created_at, owner_id, assistant_id, name, description, published from bots where id = $1
+select id, created_at, owner_id, name, description, published from bots where id = $1
 `
 
 func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
@@ -68,7 +67,6 @@ func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
 		&i.ID,
 		&i.CreatedAt,
 		&i.OwnerID,
-		&i.AssistantID,
 		&i.Name,
 		&i.Description,
 		&i.Published,
@@ -77,29 +75,22 @@ func (q *Queries) Bot(ctx context.Context, id int64) (Bot, error) {
 }
 
 const createBot = `-- name: CreateBot :one
-insert into bots(owner_id, assistant_id, name, description) values($1,$2,$3,$4) returning id, created_at, owner_id, assistant_id, name, description, published
+insert into bots(owner_id, name, description) values($1,$2,$3) returning id, created_at, owner_id, name, description, published
 `
 
 type CreateBotParams struct {
 	OwnerID     int64
-	AssistantID string
 	Name        string
 	Description string
 }
 
 func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, error) {
-	row := q.db.QueryRow(ctx, createBot,
-		arg.OwnerID,
-		arg.AssistantID,
-		arg.Name,
-		arg.Description,
-	)
+	row := q.db.QueryRow(ctx, createBot, arg.OwnerID, arg.Name, arg.Description)
 	var i Bot
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.OwnerID,
-		&i.AssistantID,
 		&i.Name,
 		&i.Description,
 		&i.Published,
@@ -108,7 +99,7 @@ func (q *Queries) CreateBot(ctx context.Context, arg CreateBotParams) (Bot, erro
 }
 
 const publishedBots = `-- name: PublishedBots :many
-select id, created_at, owner_id, assistant_id, name, description, published from bots where published = 1
+select id, created_at, owner_id, name, description, published from bots where published = 1
 `
 
 func (q *Queries) PublishedBots(ctx context.Context) ([]Bot, error) {
@@ -124,7 +115,6 @@ func (q *Queries) PublishedBots(ctx context.Context) ([]Bot, error) {
 			&i.ID,
 			&i.CreatedAt,
 			&i.OwnerID,
-			&i.AssistantID,
 			&i.Name,
 			&i.Description,
 			&i.Published,
@@ -140,7 +130,7 @@ func (q *Queries) PublishedBots(ctx context.Context) ([]Bot, error) {
 }
 
 const updateBotDescription = `-- name: UpdateBotDescription :one
-update bots set description = $1, name = $2 where id = $3 and owner_id = $4 returning id, created_at, owner_id, assistant_id, name, description, published
+update bots set description = $1, name = $2 where id = $3 and owner_id = $4 returning id, created_at, owner_id, name, description, published
 `
 
 type UpdateBotDescriptionParams struct {
@@ -162,7 +152,6 @@ func (q *Queries) UpdateBotDescription(ctx context.Context, arg UpdateBotDescrip
 		&i.ID,
 		&i.CreatedAt,
 		&i.OwnerID,
-		&i.AssistantID,
 		&i.Name,
 		&i.Description,
 		&i.Published,
@@ -171,7 +160,7 @@ func (q *Queries) UpdateBotDescription(ctx context.Context, arg UpdateBotDescrip
 }
 
 const userVisibleBots = `-- name: UserVisibleBots :many
-select id, created_at, owner_id, assistant_id, name, description, published from bots where owner_id = $1 or published = 1
+select id, created_at, owner_id, name, description, published from bots where owner_id = $1 or published = 1
 `
 
 func (q *Queries) UserVisibleBots(ctx context.Context, ownerID int64) ([]Bot, error) {
@@ -187,7 +176,6 @@ func (q *Queries) UserVisibleBots(ctx context.Context, ownerID int64) ([]Bot, er
 			&i.ID,
 			&i.CreatedAt,
 			&i.OwnerID,
-			&i.AssistantID,
 			&i.Name,
 			&i.Description,
 			&i.Published,
