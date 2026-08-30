@@ -114,7 +114,10 @@ func chatPage(l layout.Data, pageUser api.User, roomID int64, records []api.Rece
 			h.Div(h.Class("hide-scrollbar"), h.Style("flex:1; overflow-y: scroll; display:flex; flex-direction: column-reverse"),
 				chatMessagesEl(pageUser, l.User.ID, records),
 			),
-			h.Div(chatInputEl(roomID)),
+			h.Div(
+				chatInputEl(roomID),
+				chatOptimisticEl(pageUser.ID, l.User.Avatar.URL()),
+			),
 		),
 	}
 }
@@ -177,13 +180,88 @@ func chatInputEl(roomID int64) g.Node {
 	return h.Form(h.ID("form2"),
 		g.Attr("autocomplete", "off"),
 		g.Attr("hx-post", "/chat/messages"),
-		g.Attr("hx-swap", "outerHTML"),
-		g.Attr("_", "on submit add @disabled to #inp"),
+		g.Attr("hx-swap", "none"),
 		h.Input(h.Name("roomID"), h.Value(fmt.Sprint(roomID)), h.Type("hidden")),
 		h.Div(h.Style("display:flex"),
 			h.Input(h.ID("inp"), h.Name("body"), h.Type("text"), g.Attr("autofocus", ""), g.Attr("required", ""), h.Class("nes-input"), g.Attr("placeholder", "Type a message")),
 			h.Button(h.Class("nes-btn is-primary"), g.Text("Send")),
 		),
+	)
+}
+
+func chatOptimisticEl(pageUserID int64, avatarURL string) g.Node {
+	return h.Script(
+		g.Attr("data-messages-id", fmt.Sprintf("messages-%d", pageUserID)),
+		g.Attr("data-avatar", avatarURL),
+		g.Raw(`
+(function(){
+  const script = document.currentScript;
+  const messagesID = script.getAttribute("data-messages-id");
+  const avatarURL = script.getAttribute("data-avatar");
+  const form = document.getElementById("form2");
+  const input = document.getElementById("inp");
+  if (!form || !input) return;
+
+  form.addEventListener("htmx:beforeRequest", function() {
+    const body = input.value.trim();
+    if (!body) return;
+    input.value = "";
+
+    const container = document.getElementById(messagesID);
+    if (!container) return;
+
+    const wrap = document.createElement("div");
+    wrap.id = "optimistic-message";
+    wrap.style.display = "flex";
+    wrap.style.alignItems = "end";
+
+    const spacer = document.createElement("div");
+    spacer.style.flex = "1";
+
+    const balloon = document.createElement("div");
+    balloon.className = "nes-balloon from-right";
+    balloon.style.overflowWrap = "break-word";
+    balloon.style.maxWidth = "70%";
+
+    const p = document.createElement("p");
+    p.className = "optimistic-body";
+    p.textContent = body;
+
+    const meta = document.createElement("div");
+    meta.style.display = "flex";
+    meta.style.gap = "1em";
+    meta.style.fontSize = ".8em";
+    meta.style.float = "right";
+    meta.style.color = "gray";
+    meta.textContent = "just now";
+
+    balloon.appendChild(p);
+    balloon.appendChild(meta);
+
+    const img = document.createElement("img");
+    img.style.marginBottom = "8px";
+    img.src = avatarURL;
+    img.width = 80;
+    img.height = 80;
+
+    wrap.appendChild(spacer);
+    wrap.appendChild(balloon);
+    wrap.appendChild(img);
+    container.appendChild(wrap);
+  });
+
+  function rollback() {
+    const bubble = document.getElementById("optimistic-message");
+    if (!bubble) return;
+    const text = bubble.querySelector(".optimistic-body").textContent;
+    bubble.remove();
+    input.value = text;
+    input.focus();
+  }
+  form.addEventListener("htmx:responseError", rollback);
+  form.addEventListener("htmx:sendError", rollback);
+})();
+`),
 	)
 }
 
